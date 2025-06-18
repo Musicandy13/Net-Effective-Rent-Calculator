@@ -9,7 +9,7 @@ export default function NERCalculator() {
   const [fitOut, setFitOut] = useState(150);
   const [agentFeeMonths, setAgentFeeMonths] = useState(4);
 
-  const formatNumber = (value, decimals = 2) => value.toLocaleString(undefined, {
+  const formatNumber = (value, decimals = 2) => value.toLocaleString('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals
   });
@@ -75,7 +75,7 @@ export default function NERCalculator() {
       </div>
 
       <div className="pt-6 space-y-2 text-left">
-        <p className="text-red-500 font-semibold text-lg">Total Fit Out Costs: {formatNumber(totalFitOut)} €</p>
+        <p className="text-red-500 font-semibold">Total Fit Out Costs: {formatNumber(totalFitOut)} €</p>
         <p><strong>Headline Rent:</strong> {formatNumber(rent)} €/sqm</p>
 
         <p>
