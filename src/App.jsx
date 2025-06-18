@@ -9,13 +9,6 @@ export default function NERCalculator() {
   const [fitOut, setFitOut] = useState(150);
   const [agentFeeMonths, setAgentFeeMonths] = useState(4);
 
-  const parseNumber = (value) => {
-    if (typeof value === 'string') {
-      return parseFloat(value.replace(/\./g, '').replace(',', '.'));
-    }
-    return value;
-  };
-
   const gla = nla * (1 + addon / 100);
   const rentFreeMonths = duration - rf;
   const grossRent = rent * gla * rentFreeMonths;
@@ -32,6 +25,16 @@ export default function NERCalculator() {
       maximumFractionDigits: 2,
     });
 
+  const handleNumericInput = (setter) => (e) => {
+    const val = e.target.value.replace(',', '.');
+    const parsed = parseFloat(val);
+    if (!isNaN(parsed)) {
+      setter(parsed);
+    } else if (val === '') {
+      setter(0);
+    }
+  };
+
   return (
     <div className="p-6 max-w-xl mx-auto bg-white rounded-xl shadow-md space-y-4">
       <h2 className="text-2xl font-bold">Net Effective Rent Calculator</h2>
@@ -40,9 +43,8 @@ export default function NERCalculator() {
           <span className="text-gray-700">NLA (sqm)</span>
           <input
             type="number"
-            step="0.01"
             value={nla}
-            onChange={(e) => setNla(parseNumber(e.target.value))}
+            onChange={handleNumericInput(setNla)}
             className="mt-1 block w-full border rounded-md p-2"
           />
         </label>
@@ -50,13 +52,11 @@ export default function NERCalculator() {
           <span className="text-gray-700">Add-On (%)</span>
           <input
             type="number"
-            step="0.01"
             value={addon}
-            onChange={(e) => setAddon(parseNumber(e.target.value))}
+            onChange={handleNumericInput(setAddon)}
             className="mt-1 block w-full border rounded-md p-2"
           />
         </label>
-
         <label className="block">
           <span className="text-gray-700">GLA (sqm)</span>
           <input
@@ -70,20 +70,17 @@ export default function NERCalculator() {
           <span className="text-gray-700">Headline Rent €/sqm</span>
           <input
             type="number"
-            step="0.01"
             value={rent}
-            onChange={(e) => setRent(parseNumber(e.target.value))}
+            onChange={handleNumericInput(setRent)}
             className="mt-1 block w-full border rounded-md p-2"
           />
         </label>
-
         <label className="block">
           <span className="text-gray-700">Lease Term (months)</span>
           <input
             type="number"
-            step="1"
             value={duration}
-            onChange={(e) => setDuration(parseNumber(e.target.value))}
+            onChange={handleNumericInput(setDuration)}
             className="mt-1 block w-full border rounded-md p-2"
           />
         </label>
@@ -91,20 +88,17 @@ export default function NERCalculator() {
           <span className="text-gray-700">Rent-Free (months)</span>
           <input
             type="number"
-            step="0.5"
             value={rf}
-            onChange={(e) => setRf(parseNumber(e.target.value))}
+            onChange={handleNumericInput(setRf)}
             className="mt-1 block w-full border rounded-md p-2"
           />
         </label>
-
         <label className="block">
           <span className="text-gray-700">Fit-Out €/sqm (NLA)</span>
           <input
             type="number"
-            step="1"
             value={fitOut}
-            onChange={(e) => setFitOut(parseNumber(e.target.value))}
+            onChange={handleNumericInput(setFitOut)}
             className="mt-1 block w-full border rounded-md p-2"
           />
         </label>
@@ -112,9 +106,8 @@ export default function NERCalculator() {
           <span className="text-gray-700">Agent Fees (months)</span>
           <input
             type="number"
-            step="0.5"
             value={agentFeeMonths}
-            onChange={(e) => setAgentFeeMonths(parseNumber(e.target.value))}
+            onChange={handleNumericInput(setAgentFeeMonths)}
             className="mt-1 block w-full border rounded-md p-2"
           />
         </label>
