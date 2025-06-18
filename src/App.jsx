@@ -9,6 +9,13 @@ export default function NERCalculator() {
   const [fitOut, setFitOut] = useState(150);
   const [agentFeeMonths, setAgentFeeMonths] = useState(4);
 
+  const parseNumber = (value) => {
+    if (typeof value === 'string') {
+      return parseFloat(value.replace(/\./g, '').replace(',', '.'));
+    }
+    return value;
+  };
+
   const gla = nla * (1 + addon / 100);
   const rentFreeMonths = duration - rf;
   const grossRent = rent * gla * rentFreeMonths;
@@ -19,125 +26,105 @@ export default function NERCalculator() {
   const ner2 = (grossRent - totalFitOut) / (duration * gla);
   const ner3 = (grossRent - totalFitOut - agentFees) / (duration * gla);
 
-  const formatNumber = (num, fractionDigits = 2) =>
+  const formatNumber = (num) =>
     num.toLocaleString('en-US', {
-      minimumFractionDigits: fractionDigits,
-      maximumFractionDigits: fractionDigits,
-      useGrouping: true,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     });
 
-  const percentDiff = (ner) => {
-    const diff = ((ner - rent) / rent) * 100;
-    const formatted = `${diff.toFixed(2)}% ↓`;
-    const style = diff === 0 ? 'text-black' : 'text-red-600';
-    return <span className={style}>({formatted})</span>;
-  };
-
-  const handleChange = (setter) => (e) => {
-    let value = e.target.value;
-    value = value.replace(/\./g, '').replace(',', '.'); // 1.000,50 → 1000.50
-    const parsed = parseFloat(value);
-    if (!isNaN(parsed)) setter(parsed);
-  };
-
-  const handleBlur = (value, setter) => () => {
-    // Optionale Formatierung bei Verlassen des Felds
-    setter(Number(parseFloat(value.toString())));
-  };
-
   return (
-    <div className="p-6 max-w-2xl mx-auto bg-white rounded-xl shadow-md space-y-4">
+    <div className="p-6 max-w-xl mx-auto bg-white rounded-xl shadow-md space-y-4">
       <h2 className="text-2xl font-bold">Net Effective Rent Calculator</h2>
       <div className="grid grid-cols-2 gap-4">
-        <label>
-          <span>NLA (sqm)</span>
+        <label className="block">
+          <span className="text-gray-700">NLA (sqm)</span>
           <input
-            type="text"
-            value={formatNumber(nla)}
-            onChange={handleChange(setNla)}
-            onBlur={handleBlur(nla, setNla)}
-            className="w-full p-2 border rounded"
+            type="number"
+            step="0.01"
+            value={nla}
+            onChange={(e) => setNla(parseNumber(e.target.value))}
+            className="mt-1 block w-full border rounded-md p-2"
           />
         </label>
-        <label>
-          <span>Add-On (%)</span>
+        <label className="block">
+          <span className="text-gray-700">Add-On (%)</span>
           <input
-            type="text"
-            value={formatNumber(addon)}
-            onChange={handleChange(setAddon)}
-            onBlur={handleBlur(addon, setAddon)}
-            className="w-full p-2 border rounded"
+            type="number"
+            step="0.01"
+            value={addon}
+            onChange={(e) => setAddon(parseNumber(e.target.value))}
+            className="mt-1 block w-full border rounded-md p-2"
           />
         </label>
-        <label>
-          <span>GLA (sqm)</span>
+
+        <label className="block">
+          <span className="text-gray-700">GLA (sqm)</span>
           <input
             type="text"
             readOnly
             value={formatNumber(gla)}
-            className="w-full p-2 border rounded bg-gray-100 text-gray-600"
+            className="mt-1 block w-full border rounded-md p-2 bg-gray-100 text-gray-600"
           />
         </label>
-        <label>
-          <span>Headline Rent €/sqm</span>
+        <label className="block">
+          <span className="text-gray-700">Headline Rent €/sqm</span>
           <input
-            type="text"
-            value={formatNumber(rent)}
-            onChange={handleChange(setRent)}
-            onBlur={handleBlur(rent, setRent)}
-            className="w-full p-2 border rounded"
+            type="number"
+            step="0.01"
+            value={rent}
+            onChange={(e) => setRent(parseNumber(e.target.value))}
+            className="mt-1 block w-full border rounded-md p-2"
           />
         </label>
-        <label>
-          <span>Lease Term (months)</span>
+
+        <label className="block">
+          <span className="text-gray-700">Lease Term (months)</span>
           <input
-            type="text"
-            value={formatNumber(duration)}
-            onChange={handleChange(setDuration)}
-            onBlur={handleBlur(duration, setDuration)}
-            className="w-full p-2 border rounded"
+            type="number"
+            step="1"
+            value={duration}
+            onChange={(e) => setDuration(parseNumber(e.target.value))}
+            className="mt-1 block w-full border rounded-md p-2"
           />
         </label>
-        <label>
-          <span>Rent-Free (months)</span>
+        <label className="block">
+          <span className="text-gray-700">Rent-Free (months)</span>
           <input
-            type="text"
-            value={formatNumber(rf)}
-            onChange={handleChange(setRf)}
-            onBlur={handleBlur(rf, setRf)}
-            className="w-full p-2 border rounded"
+            type="number"
+            step="0.5"
+            value={rf}
+            onChange={(e) => setRf(parseNumber(e.target.value))}
+            className="mt-1 block w-full border rounded-md p-2"
           />
         </label>
-        <label>
-          <span>Fit-Out €/sqm (NLA)</span>
+
+        <label className="block">
+          <span className="text-gray-700">Fit-Out €/sqm (NLA)</span>
           <input
-            type="text"
-            value={formatNumber(fitOut)}
-            onChange={handleChange(setFitOut)}
-            onBlur={handleBlur(fitOut, setFitOut)}
-            className="w-full p-2 border rounded"
+            type="number"
+            step="1"
+            value={fitOut}
+            onChange={(e) => setFitOut(parseNumber(e.target.value))}
+            className="mt-1 block w-full border rounded-md p-2"
           />
         </label>
-        <label>
-          <span>Agent Fees (months)</span>
+        <label className="block">
+          <span className="text-gray-700">Agent Fees (months)</span>
           <input
-            type="text"
-            value={formatNumber(agentFeeMonths)}
-            onChange={handleChange(setAgentFeeMonths)}
-            onBlur={handleBlur(agentFeeMonths, setAgentFeeMonths)}
-            className="w-full p-2 border rounded"
+            type="number"
+            step="0.5"
+            value={agentFeeMonths}
+            onChange={(e) => setAgentFeeMonths(parseNumber(e.target.value))}
+            className="mt-1 block w-full border rounded-md p-2"
           />
         </label>
       </div>
 
       <div className="pt-4 space-y-2">
-        <p className="text-red-600 font-semibold text-lg">
-          Total Fit Out Costs: {formatNumber(totalFitOut)} €
-        </p>
         <p><strong>Headline Rent:</strong> {formatNumber(rent)} €/sqm</p>
-        <p>🔁 NER incl. Rent Frees: <strong>{formatNumber(ner1)} €/sqm</strong> {percentDiff(ner1)}</p>
-        <p>🔂 incl. Rent Frees & Fit-Outs: <strong>{formatNumber(ner2)} €/sqm</strong> {percentDiff(ner2)}</p>
-        <p>🔃 incl. Rent Frees, Fit-Outs & Agent Fees: <strong>{formatNumber(ner3)} €/sqm</strong> {percentDiff(ner3)}</p>
+        <p>1️⃣ Net Effective Rent (NER) incl. Rent Frees: <b>{formatNumber(ner1)} €/sqm</b></p>
+        <p>2️⃣ NER incl. Rent Frees & Fit-Outs: <b>{formatNumber(ner2)} €/sqm</b></p>
+        <p>3️⃣ NER incl. Rent Frees, Fit-Outs & Agent Fees: <b>{formatNumber(ner3)} €/sqm</b></p>
       </div>
     </div>
   );
