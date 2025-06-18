@@ -1,13 +1,13 @@
 import { useState } from 'react';
 
 export default function NERCalculator() {
-  const [nla, setNla] = useState(1000.00);
-  const [addon, setAddon] = useState(5.00);
-  const [rent, setRent] = useState(13.00);
+  const [nla, setNla] = useState(1000);
+  const [addon, setAddon] = useState(5);
+  const [rent, setRent] = useState(13);
   const [duration, setDuration] = useState(84);
-  const [rf, setRf] = useState(7.0);
-  const [fitOut, setFitOut] = useState(150.00);
-  const [agentFeeMonths, setAgentFeeMonths] = useState(4.0);
+  const [rf, setRf] = useState(7);
+  const [fitOut, setFitOut] = useState(150);
+  const [agentFeeMonths, setAgentFeeMonths] = useState(4);
 
   const gla = nla * (1 + addon / 100);
   const rentFreeMonths = duration - rf;
@@ -19,27 +19,27 @@ export default function NERCalculator() {
   const ner2 = (grossRent - totalFitOut) / (duration * gla);
   const ner3 = (grossRent - totalFitOut - agentFees) / (duration * gla);
 
-  const format = (val, minDigits = 2) =>
-    val.toLocaleString('en-US', {
-      minimumFractionDigits: minDigits,
-      maximumFractionDigits: minDigits
-    });
+  const formatNumber = (value, options = {}) =>
+    new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      ...options,
+    }).format(value);
 
-  const percentChange = (ner) => ((1 - ner / rent) * 100);
+  const percentDiff = (ner) => {
+    const diff = 100 - (ner / rent) * 100;
+    const color = diff === 0 ? 'text-black' : 'text-red-600';
+    const sign = diff === 0 ? '' : '↓';
+    return <span className={color}>({formatNumber(diff)}% {sign})</span>;
+  };
 
-  const getColor = (val) =>
-    val > 0 ? 'text-red-600' : val < 0 ? 'text-green-600' : 'text-black';
-
-  const formattedNla = format(nla);
-  const formattedAddon = format(addon);
-  const formattedRent = format(rent);
-  const formattedGla = format(gla);
-  const formattedFitOut = format(fitOut);
-  const formattedTotalFitOut = format(totalFitOut, 2);
-
-  const handleStepChange = (setter, step) => (e) => {
-    const val = parseFloat(e.target.value);
-    if (!isNaN(val) && val >= 0) setter(val);
+  const handleInputChange = (setter, step) => (e) => {
+    const value = parseFloat(e.target.value);
+    if (!isNaN(value) && value >= 0) {
+      setter(Math.round(value / step) * step);
+    } else {
+      setter(0);
+    }
   };
 
   return (
@@ -48,47 +48,107 @@ export default function NERCalculator() {
       <div className="grid grid-cols-2 gap-4">
         <label className="block">
           <span className="text-gray-700">NLA (sqm)</span>
-          <input type="number" step="0.5" value={nla} onChange={handleStepChange(setNla, 0.5)} className="mt-1 block w-full border rounded-md p-2" />
+          <input
+            type="number"
+            step="0.5"
+            value={formatNumber(nla)}
+            onChange={handleInputChange(setNla, 0.5)}
+            className="mt-1 block w-full border rounded-md p-2"
+          />
         </label>
         <label className="block">
           <span className="text-gray-700">Add-On (%)</span>
-          <input type="number" step="0.1" value={addon} onChange={handleStepChange(setAddon, 0.1)} className="mt-1 block w-full border rounded-md p-2" />
+          <input
+            type="number"
+            step="0.1"
+            value={formatNumber(addon)}
+            onChange={handleInputChange(setAddon, 0.1)}
+            className="mt-1 block w-full border rounded-md p-2"
+          />
         </label>
 
         <label className="block">
           <span className="text-gray-700">GLA (sqm)</span>
-          <input type="text" readOnly value={formattedGla} className="mt-1 block w-full border rounded-md p-2 bg-gray-100 text-gray-600" />
+          <input
+            type="text"
+            readOnly
+            value={formatNumber(gla)}
+            className="mt-1 block w-full border rounded-md p-2 bg-gray-100 text-gray-600"
+          />
         </label>
         <label className="block">
           <span className="text-gray-700">Headline Rent €/sqm</span>
-          <input type="number" step="0.25" value={rent} onChange={handleStepChange(setRent, 0.25)} className="mt-1 block w-full border rounded-md p-2" />
+          <input
+            type="number"
+            step="0.25"
+            value={formatNumber(rent)}
+            onChange={handleInputChange(setRent, 0.25)}
+            className="mt-1 block w-full border rounded-md p-2"
+          />
         </label>
 
         <label className="block">
           <span className="text-gray-700">Lease Term (months)</span>
-          <input type="number" step="1" value={duration} onChange={handleStepChange(setDuration, 1)} className="mt-1 block w-full border rounded-md p-2" />
+          <input
+            type="number"
+            step="1"
+            value={duration}
+            onChange={handleInputChange(setDuration, 1)}
+            className="mt-1 block w-full border rounded-md p-2"
+          />
         </label>
         <label className="block">
           <span className="text-gray-700">Rent-Free (months)</span>
-          <input type="number" step="0.5" value={rf} onChange={handleStepChange(setRf, 0.5)} className="mt-1 block w-full border rounded-md p-2" />
+          <input
+            type="number"
+            step="0.5"
+            value={formatNumber(rf)}
+            onChange={handleInputChange(setRf, 0.5)}
+            className="mt-1 block w-full border rounded-md p-2"
+          />
         </label>
 
         <label className="block">
           <span className="text-gray-700">Fit-Out €/sqm (NLA)</span>
-          <input type="number" step="5" value={fitOut} onChange={handleStepChange(setFitOut, 5)} className="mt-1 block w-full border rounded-md p-2" />
+          <input
+            type="number"
+            step="5"
+            value={formatNumber(fitOut)}
+            onChange={handleInputChange(setFitOut, 5)}
+            className="mt-1 block w-full border rounded-md p-2"
+          />
         </label>
         <label className="block">
           <span className="text-gray-700">Agent Fees (months)</span>
-          <input type="number" step="0.5" value={agentFeeMonths} onChange={handleStepChange(setAgentFeeMonths, 0.5)} className="mt-1 block w-full border rounded-md p-2" />
+          <input
+            type="number"
+            step="0.5"
+            value={formatNumber(agentFeeMonths)}
+            onChange={handleInputChange(setAgentFeeMonths, 0.5)}
+            className="mt-1 block w-full border rounded-md p-2"
+          />
         </label>
       </div>
 
-      <div className="pt-4 space-y-2">
-        <p className="text-red-600 font-bold text-base">Total Fit Out Costs: {formattedTotalFitOut} €</p>
-        <p><strong>Headline Rent:</strong> {formattedRent} €/sqm</p>
-        <p>1️⃣ NER incl. Rent Frees: <b>{format(ner1)} €/sqm</b> (<span className={getColor(percentChange(ner1))}>{percentChange(ner1).toFixed(2)}% ↓</span>)</p>
-        <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{format(ner2)} €/sqm</b> (<span className={getColor(percentChange(ner2))}>{percentChange(ner2).toFixed(2)}% ↓</span>)</p>
-        <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{format(ner3)} €/sqm</b> (<span className={getColor(percentChange(ner3))}>{percentChange(ner3).toFixed(2)}% ↓</span>)</p>
+      <div className="pt-4 space-y-2 text-left">
+        <p className="text-red-600 font-bold">
+          Total Fit Out Costs: {formatNumber(totalFitOut)} €
+        </p>
+        <p>
+          <strong>Headline Rent:</strong> {formatNumber(rent)} €/sqm
+        </p>
+        <p>
+          1️⃣ NER incl. Rent Frees:{' '}
+          <strong>{formatNumber(ner1)} €/sqm</strong> {percentDiff(ner1)}
+        </p>
+        <p>
+          2️⃣ incl. Rent Frees & Fit-Outs:{' '}
+          <strong>{formatNumber(ner2)} €/sqm</strong> {percentDiff(ner2)}
+        </p>
+        <p>
+          3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees:{' '}
+          <strong>{formatNumber(ner3)} €/sqm</strong> {percentDiff(ner3)}
+        </p>
       </div>
     </div>
   );
