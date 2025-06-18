@@ -17,7 +17,7 @@ export default function App() {
   const ner3 = ((headlineRent * (leaseTerm - rentFree) * nla + fitOut * nla + headlineRent * agentFee * nla) / (leaseTerm * nla)).toFixed(2);
 
   return (
-    <div className="max-w-3xl mx-auto p-4">
+   <div className="max-w-3xl mx-auto px-4 pt-6 pb-24">
       <h1 className="text-2xl font-bold mb-6 text-center">
         Net Effective Rent Calculator
       </h1>
