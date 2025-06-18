@@ -65,10 +65,10 @@ export default function NERCalculator() {
         </label>
       </div>
 
-      <div className="pt-4 space-y-2 text-center">
+      <div className="pt-4 space-y-2 text-left">
+        <p className="text-red-600 font-semibold text-sm">Total Fit Outs Costs</p>
         <p>
-          <strong>Headline Rent:</strong> {rent.toFixed(2)} €/sqm &nbsp;
-          <span className="text-sm text-gray-500">(+ {totalFitOut.toLocaleString()} € Fit-Out)</span>
+          <strong>Headline Rent:</strong> {rent.toFixed(2)} €/sqm <s className="text-gray-500">(+ {totalFitOut.toLocaleString()} € Fit-Out)</s>
         </p>
         <p>
           1️⃣ NER incl. Rent Frees: <strong>{ner1.toFixed(2)} €/sqm</strong>{' '}
