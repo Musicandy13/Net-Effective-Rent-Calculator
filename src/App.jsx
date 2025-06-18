@@ -5,13 +5,13 @@ function InputField({ label, value, onChange, readOnly }) {
     <div className="flex flex-col">
       <label className="text-sm font-medium mb-1">{label}</label>
       <input
-        type="number"
+        type="text"
         inputMode="decimal"
-        step="any"
+        pattern="[0-9]*"
         value={value}
         onChange={e => onChange?.(parseFloat(e.target.value) || 0)}
         readOnly={readOnly}
-        className={`border rounded px-3 py-2 text-sm ${readOnly ? 'bg-gray-100 text-gray-500' : ''}`}
+        className={`border rounded px-3 py-2 text-sm w-full ${readOnly ? 'bg-gray-100 text-gray-500' : ''}`}
       />
     </div>
   );
@@ -33,12 +33,12 @@ export default function App() {
   const ner3 = ((headlineRent * (leaseTerm - rentFree) * nla + fitOut * nla + headlineRent * agentFee * nla) / (leaseTerm * nla)).toFixed(2);
 
   return (
-    <div className="max-w-3xl mx-auto px-4 pt-6 pb-24">
+    <div className="max-w-3xl mx-auto px-4 pt-6 pb-36">
       <h1 className="text-2xl font-bold mb-6 text-center">
         Net Effective Rent Calculator
       </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <InputField label="NLA (m²)" value={nla} onChange={setNla} />
         <InputField label="Markup (%)" value={markup} onChange={setMarkup} />
         <InputField label="GLA (m²)" value={gla.toFixed(2)} readOnly />
@@ -49,11 +49,11 @@ export default function App() {
         <InputField label="Agent Fee (months)" value={agentFee} onChange={setAgentFee} />
       </div>
 
-      <div className="mt-6 space-y-2 text-center">
+      <div className="mt-8 space-y-3 text-center text-base">
         <p>📌 <strong>GLA:</strong> {gla.toFixed(2)} m²</p>
-        <p>① NER incl. Rent Frees: <strong>{ner1} €/m²</strong></p>
-        <p>② incl. Fit-Outs: <strong>{ner2} €/m²</strong></p>
-        <p>③ incl. Fit-Outs & Agent Fees: <strong>{ner3} €/m²</strong></p>
+        <p>① Net Effective Rent incl. Rent Frees: <strong>{ner1} €/m²</strong></p>
+        <p>② incl. Rent Free & Fit-Outs: <strong>{ner2} €/m²</strong></p>
+        <p>③ incl. Rent Free, Fit-Outs & Agent Fees: <strong>{ner3} €/m²</strong></p>
       </div>
     </div>
   );
