@@ -64,8 +64,8 @@ export default function NERCalculator() {
       <div className="pt-4 space-y-2">
         <p><strong>Headline Rent:</strong> {rent.toFixed(2)} €/sqm</p>
         <p>1️⃣ Net Effective Rent incl. Rent Frees: <b>{ner1.toFixed(2)} €/sqm</b></p>
-        <p>2️⃣ incl. Fit-Outs: <b>{ner2.toFixed(2)} €/sqm</b></p>
-        <p>3️⃣ incl. Fit-Outs & Agent Fees: <b>{ner3.toFixed(2)} €/sqm</b></p>
+        <p>2️⃣ incl. Rent Free & Fit-Outs: <b>{ner2.toFixed(2)} €/sqm</b></p>
+        <p>3️⃣ incl. Rent Free, Fit-Outs & Agent Fees: <b>{ner3.toFixed(2)} €/sqm</b></p>
       </div>
     </div>
   );
