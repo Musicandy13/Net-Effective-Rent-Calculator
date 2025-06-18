@@ -20,7 +20,11 @@ export default function NERCalculator() {
   const ner3 = (grossRent - totalFitOut - agentFees) / (duration * gla);
 
   const formatNumber = (num, fractionDigits = 2) =>
-    num.toLocaleString('en-US', { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits });
+    num.toLocaleString('en-US', {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+      useGrouping: true,
+    });
 
   const percentDiff = (ner) => {
     const diff = ((ner - rent) / rent) * 100;
@@ -30,8 +34,15 @@ export default function NERCalculator() {
   };
 
   const handleChange = (setter) => (e) => {
-    const value = parseFloat(e.target.value.replace(',', '.'));
-    if (!isNaN(value)) setter(value);
+    let value = e.target.value;
+    value = value.replace(/\./g, '').replace(',', '.'); // 1.000,50 → 1000.50
+    const parsed = parseFloat(value);
+    if (!isNaN(parsed)) setter(parsed);
+  };
+
+  const handleBlur = (value, setter) => () => {
+    // Optionale Formatierung bei Verlassen des Felds
+    setter(Number(parseFloat(value.toString())));
   };
 
   return (
@@ -40,35 +51,82 @@ export default function NERCalculator() {
       <div className="grid grid-cols-2 gap-4">
         <label>
           <span>NLA (sqm)</span>
-          <input type="number" step="0.5" value={nla} onChange={handleChange(setNla)} className="w-full p-2 border rounded" />
+          <input
+            type="text"
+            value={formatNumber(nla)}
+            onChange={handleChange(setNla)}
+            onBlur={handleBlur(nla, setNla)}
+            className="w-full p-2 border rounded"
+          />
         </label>
         <label>
           <span>Add-On (%)</span>
-          <input type="number" step="0.1" value={addon} onChange={handleChange(setAddon)} className="w-full p-2 border rounded" />
+          <input
+            type="text"
+            value={formatNumber(addon)}
+            onChange={handleChange(setAddon)}
+            onBlur={handleBlur(addon, setAddon)}
+            className="w-full p-2 border rounded"
+          />
         </label>
         <label>
           <span>GLA (sqm)</span>
-          <input type="text" readOnly value={formatNumber(gla)} className="w-full p-2 border rounded bg-gray-100 text-gray-600" />
+          <input
+            type="text"
+            readOnly
+            value={formatNumber(gla)}
+            className="w-full p-2 border rounded bg-gray-100 text-gray-600"
+          />
         </label>
         <label>
           <span>Headline Rent €/sqm</span>
-          <input type="number" step="0.25" value={rent} onChange={handleChange(setRent)} className="w-full p-2 border rounded" />
+          <input
+            type="text"
+            value={formatNumber(rent)}
+            onChange={handleChange(setRent)}
+            onBlur={handleBlur(rent, setRent)}
+            className="w-full p-2 border rounded"
+          />
         </label>
         <label>
           <span>Lease Term (months)</span>
-          <input type="number" step="1" value={duration} onChange={handleChange(setDuration)} className="w-full p-2 border rounded" />
+          <input
+            type="text"
+            value={formatNumber(duration)}
+            onChange={handleChange(setDuration)}
+            onBlur={handleBlur(duration, setDuration)}
+            className="w-full p-2 border rounded"
+          />
         </label>
         <label>
           <span>Rent-Free (months)</span>
-          <input type="number" step="0.5" value={rf} onChange={handleChange(setRf)} className="w-full p-2 border rounded" />
+          <input
+            type="text"
+            value={formatNumber(rf)}
+            onChange={handleChange(setRf)}
+            onBlur={handleBlur(rf, setRf)}
+            className="w-full p-2 border rounded"
+          />
         </label>
         <label>
           <span>Fit-Out €/sqm (NLA)</span>
-          <input type="number" step="5" value={fitOut} onChange={handleChange(setFitOut)} className="w-full p-2 border rounded" />
+          <input
+            type="text"
+            value={formatNumber(fitOut)}
+            onChange={handleChange(setFitOut)}
+            onBlur={handleBlur(fitOut, setFitOut)}
+            className="w-full p-2 border rounded"
+          />
         </label>
         <label>
           <span>Agent Fees (months)</span>
-          <input type="number" step="0.5" value={agentFeeMonths} onChange={handleChange(setAgentFeeMonths)} className="w-full p-2 border rounded" />
+          <input
+            type="text"
+            value={formatNumber(agentFeeMonths)}
+            onChange={handleChange(setAgentFeeMonths)}
+            onBlur={handleBlur(agentFeeMonths, setAgentFeeMonths)}
+            className="w-full p-2 border rounded"
+          />
         </label>
       </div>
 
