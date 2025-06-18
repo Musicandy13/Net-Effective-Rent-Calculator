@@ -1,5 +1,21 @@
 import { useState } from 'react';
-import InputField from './InputField';
+
+function InputField({ label, value, onChange, readOnly }) {
+  return (
+    <div className="flex flex-col">
+      <label className="text-sm font-medium mb-1">{label}</label>
+      <input
+        type="number"
+        inputMode="decimal"
+        step="any"
+        value={value}
+        onChange={e => onChange?.(parseFloat(e.target.value) || 0)}
+        readOnly={readOnly}
+        className={`border rounded px-3 py-2 text-sm ${readOnly ? 'bg-gray-100 text-gray-500' : ''}`}
+      />
+    </div>
+  );
+}
 
 export default function App() {
   const [nla, setNla] = useState(1000);
@@ -17,7 +33,7 @@ export default function App() {
   const ner3 = ((headlineRent * (leaseTerm - rentFree) * nla + fitOut * nla + headlineRent * agentFee * nla) / (leaseTerm * nla)).toFixed(2);
 
   return (
-   <div className="max-w-3xl mx-auto px-4 pt-6 pb-24">
+    <div className="max-w-3xl mx-auto px-4 pt-6 pb-24">
       <h1 className="text-2xl font-bold mb-6 text-center">
         Net Effective Rent Calculator
       </h1>
