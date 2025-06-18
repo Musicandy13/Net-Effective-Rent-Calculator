@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import InputField from './InputField';
 
 export default function App() {
   const [nla, setNla] = useState(1000);
@@ -23,14 +22,85 @@ export default function App() {
       </h1>
 
       <div className="grid grid-cols-2 gap-4">
-        <InputField label="NLA (m²)" value={nla} onChange={setNla} />
-        <InputField label="Markup (%)" value={markup} onChange={setMarkup} />
-        <InputField label="GLA (m²)" value={gla.toFixed(2)} readOnly />
-        <InputField label="Headline Rent €/m²" value={headlineRent} onChange={setHeadlineRent} />
-        <InputField label="Lease Term (months)" value={leaseTerm} onChange={setLeaseTerm} />
-        <InputField label="Rent-Free (months)" value={rentFree} onChange={setRentFree} />
-        <InputField label="Fit-Out €/m² NLA" value={fitOut} onChange={setFitOut} />
-        <InputField label="Agent Fee (months)" value={agentFee} onChange={setAgentFee} />
+        <div className="flex flex-col">
+          <label className="text-sm font-medium mb-1">NLA (m²)</label>
+          <input
+            type="number"
+            value={nla}
+            onChange={e => setNla(Number(e.target.value))}
+            className="border rounded px-3 py-2"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-medium mb-1">Markup (%)</label>
+          <input
+            type="number"
+            value={markup}
+            onChange={e => setMarkup(Number(e.target.value))}
+            className="border rounded px-3 py-2"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-medium mb-1">GLA (m²)</label>
+          <input
+            type="number"
+            value={gla.toFixed(2)}
+            readOnly
+            className="border rounded px-3 py-2 bg-gray-100 text-gray-500"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-medium mb-1">Headline Rent €/m²</label>
+          <input
+            type="number"
+            value={headlineRent}
+            onChange={e => setHeadlineRent(Number(e.target.value))}
+            className="border rounded px-3 py-2"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-medium mb-1">Lease Term (months)</label>
+          <input
+            type="number"
+            value={leaseTerm}
+            onChange={e => setLeaseTerm(Number(e.target.value))}
+            className="border rounded px-3 py-2"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-medium mb-1">Rent-Free (months)</label>
+          <input
+            type="number"
+            value={rentFree}
+            onChange={e => setRentFree(Number(e.target.value))}
+            className="border rounded px-3 py-2"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-medium mb-1">Fit-Out €/m² NLA</label>
+          <input
+            type="number"
+            value={fitOut}
+            onChange={e => setFitOut(Number(e.target.value))}
+            className="border rounded px-3 py-2"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-medium mb-1">Agent Fee (months)</label>
+          <input
+            type="number"
+            value={agentFee}
+            onChange={e => setAgentFee(Number(e.target.value))}
+            className="border rounded px-3 py-2"
+          />
+        </div>
       </div>
 
       <div className="mt-8 space-y-2 text-center">
