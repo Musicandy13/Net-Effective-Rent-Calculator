@@ -19,14 +19,11 @@ export default function NERCalculator() {
   const ner2 = (grossRent - totalFitOut) / (duration * gla);
   const ner3 = (grossRent - totalFitOut - agentFees) / (duration * gla);
 
-  const red1 = ((1 - ner1 / rent) * 100).toFixed(2);
-  const red2 = ((1 - ner2 / rent) * 100).toFixed(2);
-  const red3 = ((1 - ner3 / rent) * 100).toFixed(2);
+  const reduction = (val) => (((rent - val) / rent) * 100).toFixed(2);
 
   return (
     <div className="p-6 max-w-xl mx-auto bg-white rounded-xl shadow-md space-y-4">
-      <h2 className="text-2xl font-bold text-center">Net Effective Rent Calculator</h2>
-
+      <h2 className="text-2xl font-bold">Net Effective Rent Calculator</h2>
       <div className="grid grid-cols-2 gap-4">
         <label className="block">
           <span className="text-gray-700">NLA (sqm)</span>
@@ -66,22 +63,11 @@ export default function NERCalculator() {
       </div>
 
       <div className="pt-4 space-y-2 text-left">
-        <p className="text-red-600 font-semibold text-sm">Total Fit Outs Costs</p>
-        <p>
-          <strong>Headline Rent:</strong> {rent.toFixed(2)} €/sqm <s className="text-gray-500">(+ {totalFitOut.toLocaleString()} € Fit-Out)</s>
-        </p>
-        <p>
-          1️⃣ NER incl. Rent Frees: <strong>{ner1.toFixed(2)} €/sqm</strong>{' '}
-          <span className="text-sm text-gray-500">({red1}% ↓)</span>
-        </p>
-        <p>
-          2️⃣ incl. Rent Frees & Fit-Outs: <strong>{ner2.toFixed(2)} €/sqm</strong>{' '}
-          <span className="text-sm text-gray-500">({red2}% ↓)</span>
-        </p>
-        <p>
-          3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <strong>{ner3.toFixed(2)} €/sqm</strong>{' '}
-          <span className="text-sm text-gray-500">({red3}% ↓)</span>
-        </p>
+        <p className="text-red-600 font-medium">Total Fit Out Costs: {totalFitOut.toLocaleString()} €</p>
+        <p><strong>Headline Rent:</strong> {rent.toFixed(2)} €/sqm</p>
+        <p>1️⃣ Net Effective Rent (NER) incl. Rent Frees: <b>{ner1.toFixed(2)} €/sqm</b> ({reduction(ner1)}% ↓)</p>
+        <p>2️⃣ NER incl. Rent Frees & Fit-Outs: <b>{ner2.toFixed(2)} €/sqm</b> ({reduction(ner2)}% ↓)</p>
+        <p>3️⃣ NER incl. Rent Frees, Fit-Outs & Agent Fees: <b>{ner3.toFixed(2)} €/sqm</b> ({reduction(ner3)}% ↓)</p>
       </div>
     </div>
   );
