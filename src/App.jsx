@@ -29,59 +29,61 @@ export default function NERCalculator() {
   });
 
   return (
-    <div className="px-4 py-6 max-w-screen-md mx-auto bg-white rounded-xl shadow-md space-y-6">
-      <h2 className="text-xl sm:text-2xl font-bold text-center">Net Effective Rent Calculator</h2>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {[
-          { label: "NLA (sqm)", value: nla, set: setNla },
-          { label: "Add-On (%)", value: addon, set: setAddon },
-          { label: "Headline Rent €/sqm", value: rent, set: setRent },
-          { label: "Lease Term (months)", value: duration, set: setDuration },
-          { label: "Rent-Free (months)", value: rf, set: setRf },
-          { label: "Fit-Out €/sqm (NLA)", value: fitOut, set: setFitOut },
-          { label: "Agent Fees (months)", value: agentFeeMonths, set: setAgentFeeMonths },
-        ].map((field, idx) => (
-          <label key={idx} className="block">
-            <span className="text-gray-700 text-sm">{field.label}</span>
-            <input
-              type="number"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              min={0}
-              value={field.value}
-              onChange={e => field.set(+e.target.value)}
-              className="mt-1 block w-full border rounded-md p-3 text-base"
-            />
-          </label>
-        ))}
+    <div className="p-6 max-w-xl mx-auto bg-white rounded-xl shadow-md space-y-4">
+      <h2 className="text-2xl font-bold">Net Effective Rent Calculator</h2>
+      <div className="grid grid-cols-2 gap-4">
+        <label className="block">
+          <span className="text-gray-700">NLA (sqm)</span>
+          <input min={0} type="number" value={nla} onChange={e => setNla(+e.target.value)} className="mt-1 block w-full border rounded-md p-2" />
+        </label>
+        <label className="block">
+          <span className="text-gray-700">Add-On (%)</span>
+          <input min={0} type="number" value={addon} onChange={e => setAddon(+e.target.value)} className="mt-1 block w-full border rounded-md p-2" />
+        </label>
 
         <label className="block">
-          <span className="text-gray-700 text-sm">GLA (sqm)</span>
-          <input
-            type="text"
-            readOnly
-            value={gla.toFixed(2)}
-            className="mt-1 block w-full border rounded-md p-3 bg-gray-100 text-gray-600"
-          />
+          <span className="text-gray-700">GLA (sqm)</span>
+          <input type="text" readOnly value={gla.toFixed(2)} className="mt-1 block w-full border rounded-md p-2 bg-gray-100 text-gray-600" />
+        </label>
+        <label className="block">
+          <span className="text-gray-700">Headline Rent €/sqm</span>
+          <input min={0} type="number" value={rent} onChange={e => setRent(+e.target.value)} className="mt-1 block w-full border rounded-md p-2" />
+        </label>
+
+        <label className="block">
+          <span className="text-gray-700">Lease Term (months)</span>
+          <input min={0} type="number" value={duration} onChange={e => setDuration(+e.target.value)} className="mt-1 block w-full border rounded-md p-2" />
+        </label>
+        <label className="block">
+          <span className="text-gray-700">Rent-Free (months)</span>
+          <input min={0} type="number" value={rf} onChange={e => setRf(+e.target.value)} className="mt-1 block w-full border rounded-md p-2" />
+        </label>
+
+        <label className="block">
+          <span className="text-gray-700">Fit-Out €/sqm (NLA)</span>
+          <input min={0} type="number" value={fitOut} onChange={e => setFitOut(+e.target.value)} className="mt-1 block w-full border rounded-md p-2" />
+        </label>
+        <label className="block">
+          <span className="text-gray-700">Agent Fees (months)</span>
+          <input min={0} type="number" value={agentFeeMonths} onChange={e => setAgentFeeMonths(+e.target.value)} className="mt-1 block w-full border rounded-md p-2" />
         </label>
       </div>
 
-      <div className="pt-4 space-y-3 text-left text-sm sm:text-base">
-        <p className="text-red-500 font-semibold">🔧 Total Fit Out Costs: {totalFitOut.toLocaleString()} €</p>
+      <div className="pt-6 space-y-2 text-left">
+        <p className="text-sm text-red-500 font-semibold">Total Fit Out Costs: {totalFitOut.toLocaleString()} €</p>
         <p><strong>Headline Rent:</strong> {rent.toFixed(2)} €/sqm</p>
 
         <p>
-          1️⃣ NER inkl. Rent Free: <b>{ner1.toFixed(2)} €/sqm</b>{' '}
-          <span className={`${reduction(ner1).color}`}>({reduction(ner1).value}% ↓)</span>
+          1️⃣ NER incl. Rent Frees: <b>{ner1.toFixed(2)} €/sqm</b>{' '}
+          <span className={${reduction(ner1).color}}>({reduction(ner1).value}% ↓)</span>
         </p>
         <p>
-          2️⃣ inkl. Rent Free & Fit-Out: <b>{ner2.toFixed(2)} €/sqm</b>{' '}
-          <span className={`${reduction(ner2).color}`}>({reduction(ner2).value}% ↓)</span>
+          2️⃣ incl. Rent Frees & Fit-Outs: <b>{ner2.toFixed(2)} €/sqm</b>{' '}
+          <span className={${reduction(ner2).color}}>({reduction(ner2).value}% ↓)</span>
         </p>
         <p>
-          3️⃣ inkl. Rent Free, Fit-Out & Agent Fees: <b>{ner3.toFixed(2)} €/sqm</b>{' '}
-          <span className={`${reduction(ner3).color}`}>({reduction(ner3).value}% ↓)</span>
+          3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{ner3.toFixed(2)} €/sqm</b>{' '}
+          <span className={${reduction(ner3).color}}>({reduction(ner3).value}% ↓)</span>
         </p>
       </div>
     </div>
