@@ -19,14 +19,14 @@ export default function NERCalculator() {
   const ner2 = (grossRent - totalFitOut) / (duration * gla);
   const ner3 = (grossRent - totalFitOut - agentFees) / (duration * gla);
 
-  const reduction = (ner => {
+  const reduction = (ner) => {
     const diff = rent - ner;
     const percent = (diff / rent) * 100;
     return {
       value: percent.toFixed(2),
       color: percent === 0 ? 'text-black' : 'text-red-600',
     };
-  });
+  };
 
   return (
     <div className="p-6 max-w-xl mx-auto bg-white rounded-xl shadow-md space-y-4">
@@ -75,15 +75,15 @@ export default function NERCalculator() {
 
         <p>
           1️⃣ NER incl. Rent Frees: <b>{ner1.toFixed(2)} €/sqm</b>{' '}
-          <span className={${reduction(ner1).color}}>({reduction(ner1).value}% ↓)</span>
+          <span className={reduction(ner1).color}>({reduction(ner1).value}% ↓)</span>
         </p>
         <p>
           2️⃣ incl. Rent Frees & Fit-Outs: <b>{ner2.toFixed(2)} €/sqm</b>{' '}
-          <span className={${reduction(ner2).color}}>({reduction(ner2).value}% ↓)</span>
+          <span className={reduction(ner2).color}>({reduction(ner2).value}% ↓)</span>
         </p>
         <p>
           3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{ner3.toFixed(2)} €/sqm</b>{' '}
-          <span className={${reduction(ner3).color}}>({reduction(ner3).value}% ↓)</span>
+          <span className={reduction(ner3).color}>({reduction(ner3).value}% ↓)</span>
         </p>
       </div>
     </div>
