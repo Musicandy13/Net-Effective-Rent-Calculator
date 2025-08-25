@@ -12,6 +12,15 @@ const fmtFixed = (n, decimals) =>
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(Number.isFinite(n) ? n : 0);
+// 1 decimal only if needed; otherwise integer
+const fmt1Trim = (n) => {
+  n = Number.isFinite(n) ? n : 0;
+  const isInt = Math.abs(n - Math.round(n)) < 1e-9;
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: isInt ? 0 : 1,
+    maximumFractionDigits: isInt ? 0 : 1,
+  }).format(n);
+};
 const fmtEUR = (n) =>
   (n ?? 0).toLocaleString("en-US", {
     style: "currency",
@@ -25,17 +34,22 @@ function NumericField({
   label,
   valueStr,
   setValueStr,
-  decimals = 0,
   step = 1,
   min = 0,
   readOnly = false,
+  format = "int", // 'int' | '1dec-trim' | '2dec'
   inputMode = "decimal",
 }) {
   const [focused, setFocused] = useState(false);
+  const valNum = clampNN(parseFlexible(valueStr));
 
   const displayStr = focused
     ? valueStr
-    : fmtFixed(parseFlexible(valueStr), decimals);
+    : format === "2dec"
+    ? fmtFixed(valNum, 2)
+    : format === "1dec-trim"
+    ? fmt1Trim(valNum)
+    : fmtFixed(valNum, 0);
 
   return (
     <label className="block">
@@ -51,8 +65,7 @@ function NumericField({
         onBlur={(e) => {
           setFocused(false);
           const n = clampNN(parseFlexible(e.target.value));
-          // keep decimals only if user entered them
-          setValueStr(String(n));
+          setValueStr(String(n)); // keep what user typed (decimals preserved)
         }}
         onChange={(e) => {
           const raw = e.target.value.replace(/[^\d.,-]/g, "");
@@ -70,17 +83,17 @@ function NumericField({
 export default function App() {
   // raw strings
   const [nlaStr, setNlaStr] = useState("1000");
-  const [addonStr, setAddonStr] = useState("5");
-  const [rentStr, setRentStr] = useState("13.00");
-  const [durationStr, setDurationStr] = useState("84");
-  const [rfStr, setRfStr] = useState("7");
-  const [agentFeeMonthsStr, setAgentFeeMonthsStr] = useState("4");
+  const [addonStr, setAddonStr] = useState("5");         // shows as integer by default
+  const [rentStr, setRentStr] = useState("13.00");       // 2 decimals
+  const [durationStr, setDurationStr] = useState("84");  // integer
+  const [rfStr, setRfStr] = useState("7");               // 1-dec trim (8.5 stays 8.5)
+  const [agentFeeMonthsStr, setAgentFeeMonthsStr] = useState("4"); // 1-dec trim
 
   // Fit-Out mode + fields
-  const [fitOutMode, setFitOutMode] = useState("perSqm");
+  const [fitOutMode, setFitOutMode] = useState("perSqm"); // 'perSqm' | 'total'
   const [fitOutPerSqmStr, setFitOutPerSqmStr] = useState("150");
   const [fitOutTotalStr, setFitOutTotalStr] = useState("150000");
-  const [focusField, setFocusField] = useState(null);
+  const [focusField, setFocusField] = useState(null); // 'perSqm' | 'total' | null
 
   // parsed
   const nla = clampNN(parseFlexible(nlaStr));
@@ -96,6 +109,7 @@ export default function App() {
   const rentMonthsCharged = Math.max(0, duration - rf);
   const grossRent = rent * gla * rentMonthsCharged;
 
+  // sync fit-outs with NLA & mode, but don't touch focused field
   useEffect(() => {
     if (fitOutMode === "perSqm") {
       if (focusField !== "perSqm") setFitOutTotalStr(String(fitOutPerSqm * nla));
@@ -133,19 +147,19 @@ export default function App() {
           label="NLA (sqm)"
           valueStr={nlaStr}
           setValueStr={setNlaStr}
-          decimals={0}
           step={1}
           min={0}
           inputMode="numeric"
+          format="int"
         />
 
         <NumericField
           label="Add-On (%)"
           valueStr={addonStr}
           setValueStr={setAddonStr}
-          decimals={0} // show integers by default
           step={1}
           min={0}
+          format="int"
         />
 
         <label className="block">
@@ -162,28 +176,29 @@ export default function App() {
           label="Headline Rent €/sqm"
           valueStr={rentStr}
           setValueStr={setRentStr}
-          decimals={2} // keep 2 decimals
           step={1}
           min={0}
+          format="2dec"     // keep two decimals like rent
         />
 
         <NumericField
           label="Lease Term (months)"
           valueStr={durationStr}
           setValueStr={setDurationStr}
-          decimals={0}
           step={1}
           min={0}
           inputMode="numeric"
+          format="int"
         />
 
+        {/* Rent-Free: step 1.0, but if you type 8.5 it stays 8.5 */}
         <NumericField
           label="Rent-Free (months)"
           valueStr={rfStr}
           setValueStr={setRfStr}
-          decimals={0} // show whole numbers by default
           step={1}
           min={0}
+          format="1dec-trim"
         />
 
         {/* -------- FIT-OUTS -------- */}
@@ -210,7 +225,7 @@ export default function App() {
             </label>
           </div>
 
-          {/* €/sqm */}
+          {/* €/sqm — show 2 decimals when not focused (like rent) */}
           <label className="block mb-2">
             <span className="text-gray-700">Fit-Out €/sqm (NLA)</span>
             <input
@@ -219,7 +234,7 @@ export default function App() {
               value={
                 focusField === "perSqm"
                   ? fitOutPerSqmStr
-                  : fmtFixed(parseFlexible(fitOutPerSqmStr), 0)
+                  : fmtFixed(parseFlexible(fitOutPerSqmStr), 2)
               }
               onFocus={() => setFocusField("perSqm")}
               onBlur={(e) => {
@@ -243,7 +258,7 @@ export default function App() {
             />
           </label>
 
-          {/* Total */}
+          {/* Total (€) — show 2 decimals when not focused (like rent) */}
           <label className="block">
             <span className="text-gray-700">Fit-Out Total (€)</span>
             <input
@@ -252,7 +267,7 @@ export default function App() {
               value={
                 focusField === "total"
                   ? fitOutTotalStr
-                  : fmtFixed(parseFlexible(fitOutTotalStr), 0)
+                  : fmtFixed(parseFlexible(fitOutTotalStr), 2)
               }
               onFocus={() => setFocusField("total")}
               onBlur={(e) => {
@@ -279,13 +294,14 @@ export default function App() {
           </label>
         </div>
 
+        {/* Agent Fees: same behavior as Rent-Free */}
         <NumericField
           label="Agent Fees (months)"
           valueStr={agentFeeMonthsStr}
           setValueStr={setAgentFeeMonthsStr}
-          decimals={0}
           step={1}
           min={0}
+          format="1dec-trim"
         />
       </div>
 
@@ -298,22 +314,15 @@ export default function App() {
         </p>
         <p>
           1️⃣ NER incl. Rent Frees: <b>{ner1.toFixed(2)} €/sqm</b>{" "}
-          <span className={reduction(ner1).color}>
-            ({reduction(ner1).value}% ↓)
-          </span>
+          <span className={reduction(ner1).color}>({reduction(ner1).value}% ↓)</span>
         </p>
         <p>
           2️⃣ incl. Rent Frees &amp; Fit-Outs: <b>{ner2.toFixed(2)} €/sqm</b>{" "}
-          <span className={reduction(ner2).color}>
-            ({reduction(ner2).value}% ↓)
-          </span>
+          <span className={reduction(ner2).color}>({reduction(ner2).value}% ↓)</span>
         </p>
         <p>
-          3️⃣ incl. Rent Frees, Fit-Outs &amp; Agent Fees:{" "}
-          <b>{ner3.toFixed(2)} €/sqm</b>{" "}
-          <span className={reduction(ner3).color}>
-            ({reduction(ner3).value}% ↓)
-          </span>
+          3️⃣ incl. Rent Frees, Fit-Outs &amp; Agent Fees: <b>{ner3.toFixed(2)} €/sqm</b>{" "}
+          <span className={reduction(ner3).color}>({reduction(ner3).value}% ↓)</span>
         </p>
       </div>
     </div>
