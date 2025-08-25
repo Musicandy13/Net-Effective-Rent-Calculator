@@ -1,9 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 
 /* ---------------- Helpers ---------------- */
+// Accepts: "160.56", "160,56", "16,056.78", "16.056,78"
 const parseFlexible = (v) => {
-  const clean = String(v ?? "").replace(/,/g, "").trim();
-  const n = parseFloat(clean);
+  let s = String(v ?? "").trim().replace(/\s/g, "");
+  const hasDot = s.includes(".");
+  const commaCount = (s.match(/,/g) || []).length;
+
+  if (!hasDot && commaCount === 1) {
+    // Single comma, no dot -> treat comma as decimal separator
+    s = s.replace(",", ".");
+  } else {
+    // Otherwise commas are thousands separators -> drop them
+    s = s.replace(/,/g, "");
+  }
+  const n = parseFloat(s);
   return Number.isFinite(n) ? n : 0;
 };
 const clampNN = (n) => (n >= 0 ? n : 0);
@@ -30,6 +41,8 @@ function NumericField({
   readOnly = false,
   format = "2dec", // 'int' | '2dec' | '1dec-trim'
   inputMode = "decimal",
+  className = "",
+  onCommit, // optional callback with parsed number when user blurs
 }) {
   const [focused, setFocused] = useState(false);
   const valNum = clampNN(parseFlexible(valueStr));
@@ -62,15 +75,17 @@ function NumericField({
         onBlur={(e) => {
           setFocused(false);
           const n = clampNN(parseFlexible(e.target.value));
-          setValueStr(String(n)); // preserve decimals user typed
+          setValueStr(String(n)); // keep exactly what user meant (supports , or .)
+          onCommit?.(n);
         }}
         onChange={(e) => {
+          // allow digits, dot, comma and minus (minus ignored due to min=0)
           const raw = e.target.value.replace(/[^\d.,-]/g, "");
           setValueStr(raw);
         }}
         className={`mt-1 block w-full border rounded-md p-2 ${
           readOnly ? "bg-gray-100 text-gray-600" : ""
-        }`}
+        } ${className}`}
       />
     </label>
   );
@@ -80,17 +95,16 @@ function NumericField({
 export default function App() {
   // raw strings
   const [nlaStr, setNlaStr] = useState("1000");
-  const [addonStr, setAddonStr] = useState("5.00");      // now 2 decimals like Rent
-  const [rentStr, setRentStr] = useState("13.00");       // 2 decimals
-  const [durationStr, setDurationStr] = useState("84");  // integer
-  const [rfStr, setRfStr] = useState("7");               // 1-dec-trim if you ever want that; we keep int display
-  const [agentFeeMonthsStr, setAgentFeeMonthsStr] = useState("4");
+  const [addonStr, setAddonStr] = useState("22.00");      // 2 decimals, step 1
+  const [rentStr, setRentStr] = useState("225.56");       // 2 decimals, step 1
+  const [durationStr, setDurationStr] = useState("84");   // integer
+  const [rfStr, setRfStr] = useState("7");                // integer display (can type decimals if you want)
+  const [agentFeeMonthsStr, setAgentFeeMonthsStr] = useState("4"); // integer display
 
-  // Fit-Out mode + fields
+  // Fit-Out mode + fields (as strings)
   const [fitOutMode, setFitOutMode] = useState("perSqm"); // 'perSqm' | 'total'
-  const [fitOutPerSqmStr, setFitOutPerSqmStr] = useState("150.00");
-  const [fitOutTotalStr, setFitOutTotalStr] = useState("150000.00");
-  const [focusField, setFocusField] = useState(null); // 'perSqm' | 'total' | null
+  const [fitOutPerSqmStr, setFitOutPerSqmStr] = useState("150.00");     // 2-dec UI
+  const [fitOutTotalStr, setFitOutTotalStr] = useState("150000.00");    // 2-dec UI
 
   // parsed
   const nla = clampNN(parseFlexible(nlaStr));
@@ -106,13 +120,12 @@ export default function App() {
   const rentMonthsCharged = Math.max(0, duration - rf);
   const grossRent = rent * gla * rentMonthsCharged;
 
-  // sync fit-outs with NLA & mode, but don't touch focused field
+  // keep €/sqm & total synced with NLA and mode
   useEffect(() => {
     if (fitOutMode === "perSqm") {
-      if (focusField !== "perSqm") setFitOutTotalStr(String(fitOutPerSqm * nla));
+      setFitOutTotalStr(String(fitOutPerSqm * nla));
     } else {
-      if (focusField !== "total")
-        setFitOutPerSqmStr(String(nla > 0 ? fitOutTotalManual / nla : 0));
+      setFitOutPerSqmStr(String(nla > 0 ? fitOutTotalManual / nla : 0));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nla, fitOutMode]);
@@ -129,10 +142,7 @@ export default function App() {
   const reduction = (ner) => {
     const diff = rent - ner;
     const percent = rent > 0 ? (diff / rent) * 100 : 0;
-    return {
-      value: percent.toFixed(2),
-      color: percent === 0 ? "text-black" : "text-red-600",
-    };
+    return { value: percent.toFixed(2), color: percent === 0 ? "text-black" : "text-red-600" };
   };
 
   return (
@@ -150,7 +160,7 @@ export default function App() {
           format="int"
         />
 
-        {/* Add-On now identical to Headline Rent (2 decimals, step 1) */}
+        {/* Add-On now identical to Rent: 2 decimals, step 1 */}
         <NumericField
           label="Add-On (%)"
           valueStr={addonStr}
@@ -189,7 +199,6 @@ export default function App() {
           format="int"
         />
 
-        {/* If you want 8.5 to stay as 8.5, switch to format="1dec-trim" */}
         <NumericField
           label="Rent-Free (months)"
           valueStr={rfStr}
@@ -200,7 +209,7 @@ export default function App() {
         />
       </div>
 
-      {/* -------- FIT-OUTS (both like Headline Rent: 2 decimals, step 1) -------- */}
+      {/* -------- FIT-OUTS (both like Rent: 2 decimals, step 1) -------- */}
       <div className="border rounded-md p-3">
         <div className="flex items-center gap-4 mb-3">
           <span className="text-gray-700 font-medium">Fit-Out Input:</span>
@@ -224,73 +233,54 @@ export default function App() {
           </label>
         </div>
 
-        {/* €/sqm — raw while focused, 2-dec on blur; step=1 */}
-        <label className="block mb-2">
-          <span className="text-gray-700">Fit-Out €/sqm (NLA)</span>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={
-              focusField === "perSqm"
-                ? fitOutPerSqmStr
-                : fmtFixed(parseFlexible(fitOutPerSqmStr), 2)
+        {/* €/sqm — 2 decimals, step 1, supports , or . as decimal */}
+        <NumericField
+          label="Fit-Out €/sqm (NLA)"
+          valueStr={fitOutPerSqmStr}
+          setValueStr={(s) => {
+            setFitOutPerSqmStr(s);
+            if (fitOutMode === "perSqm") {
+              // live sync total while typing
+              const val = clampNN(parseFlexible(s));
+              setFitOutTotalStr(String(val * clampNN(parseFlexible(nlaStr))));
             }
-            onFocus={() => setFocusField("perSqm")}
-            onBlur={(e) => {
-              setFocusField(null);
-              const n = clampNN(parseFlexible(e.target.value));
-              setFitOutPerSqmStr(String(n));
-              if (fitOutMode === "perSqm") setFitOutTotalStr(String(n * nla));
-            }}
-            onChange={(e) => {
-              const raw = e.target.value.replace(/[^\d.,-]/g, "");
-              setFitOutPerSqmStr(raw);
-              if (fitOutMode === "perSqm") {
-                const val = clampNN(parseFlexible(raw));
-                setFitOutTotalStr(String(val * nla));
-              }
-            }}
-            readOnly={fitOutMode === "total"}
-            className={`mt-1 block w-full border rounded-md p-2 ${
-              fitOutMode === "total" ? "bg-gray-100 text-gray-600" : ""
-            }`}
-          />
-        </label>
+          }}
+          step={1}
+          min={0}
+          format="2dec"
+          onCommit={(n) => {
+            if (fitOutMode === "perSqm") {
+              setFitOutTotalStr(String(n * clampNN(parseFlexible(nlaStr))));
+            }
+          }}
+          className={fitOutMode === "total" ? "bg-gray-100 text-gray-600" : ""}
+          readOnly={fitOutMode === "total"}
+        />
 
-        {/* Total (€) — raw while focused, 2-dec on blur; step=1 */}
-        <label className="block">
-          <span className="text-gray-700">Fit-Out Total (€)</span>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={
-              focusField === "total"
-                ? fitOutTotalStr
-                : fmtFixed(parseFlexible(fitOutTotalStr), 2)
+        {/* Total (€) — 2 decimals, step 1 */}
+        <NumericField
+          label="Fit-Out Total (€)"
+          valueStr={fitOutTotalStr}
+          setValueStr={(s) => {
+            setFitOutTotalStr(s);
+            if (fitOutMode === "total") {
+              const n = clampNN(parseFlexible(s));
+              const nla = clampNN(parseFlexible(nlaStr));
+              setFitOutPerSqmStr(String(nla > 0 ? n / nla : 0));
             }
-            onFocus={() => setFocusField("total")}
-            onBlur={(e) => {
-              setFocusField(null);
-              const n = clampNN(parseFlexible(e.target.value));
-              setFitOutTotalStr(String(n));
-              if (fitOutMode === "total") {
-                setFitOutPerSqmStr(String(nla > 0 ? n / nla : 0));
-              }
-            }}
-            onChange={(e) => {
-              const raw = e.target.value.replace(/[^\d.,-]/g, "");
-              setFitOutTotalStr(raw);
-              if (fitOutMode === "total") {
-                const n = clampNN(parseFlexible(raw));
-                setFitOutPerSqmStr(String(nla > 0 ? n / nla : 0));
-              }
-            }}
-            readOnly={fitOutMode === "perSqm"}
-            className={`mt-1 block w-full border rounded-md p-2 ${
-              fitOutMode === "perSqm" ? "bg-gray-100 text-gray-600" : ""
-            }`}
-          />
-        </label>
+          }}
+          step={1}
+          min={0}
+          format="2dec"
+          onCommit={(n) => {
+            if (fitOutMode === "total") {
+              const nla = clampNN(parseFlexible(nlaStr));
+              setFitOutPerSqmStr(String(nla > 0 ? n / nla : 0));
+            }
+          }}
+          className={fitOutMode === "perSqm" ? "bg-gray-100 text-gray-600" : ""}
+          readOnly={fitOutMode === "perSqm"}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-4 mt-4">
