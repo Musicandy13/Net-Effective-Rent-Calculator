@@ -1,81 +1,78 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useEffect, useMemo, useState } from "react";
 
-/* ---------- Helpers ---------- */
+/* ---------------- Helpers ---------------- */
 const parseInput = (v) => {
-  const clean = String(v ?? '').replace(/,/g, '').trim();
+  const clean = String(v ?? "").replace(/,/g, "").trim();
   const n = parseFloat(clean);
   return Number.isFinite(n) && n >= 0 ? n : 0;
 };
-const fmtInput = (n) =>
-  new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const fmt2 = (n) =>
+  new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     .format(Number.isFinite(n) ? n : 0);
+const fmtInt = (n) => String(Math.max(0, Math.round(Number(n) || 0)));
 const fmtEUR = (n) =>
-  (n ?? 0).toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'EUR',
+  (n ?? 0).toLocaleString("en-US", {
+    style: "currency",
+    currency: "EUR",
     minimumFractionDigits: 0,
     maximumFractionDigits: Math.abs(n - Math.trunc(n)) < 1e-9 ? 0 : 2,
   });
 const nn = (v) => (Number.isFinite(+v) && +v >= 0 ? +v : 0);
 
-/* ---------- App ---------- */
+/* ---------------- App ---------------- */
 export default function NERCalculator() {
-  const [nla, setNla] = useState(1000);
-  const [addon, setAddon] = useState(5);
-  const [rent, setRent] = useState(13);
-  const [duration, setDuration] = useState(84);
-  const [rf, setRf] = useState(7);
+  // all inputs as RAW STRINGS (no formatting while typing)
+  const [nlaStr, setNlaStr] = useState("1000");
+  const [addonStr, setAddonStr] = useState("5");
+  const [rentStr, setRentStr] = useState("13");
+  const [durationStr, setDurationStr] = useState("84");
+  const [rfStr, setRfStr] = useState("7");
+  const [agentFeeMonthsStr, setAgentFeeMonthsStr] = useState("4");
 
-  // 'perSqm' | 'total'
-  const [fitOutMode, setFitOutMode] = useState('perSqm');
-
-  // Raw strings for inputs (no formatting while typing)
-  const [fitOutPerSqmStr, setFitOutPerSqmStr] = useState(fmtInput(150));
-  const [fitOutTotalStr, setFitOutTotalStr] = useState(fmtInput(150 * 1000));
-
-  // Track which field user is editing to avoid overwriting caret/contents
+  // fit-out input mode & raw strings
+  const [fitOutMode, setFitOutMode] = useState("perSqm"); // 'perSqm' | 'total'
+  const [fitOutPerSqmStr, setFitOutPerSqmStr] = useState(fmt2(150));
+  const [fitOutTotalStr, setFitOutTotalStr] = useState(fmt2(150 * 1000));
   const [focusField, setFocusField] = useState(null); // 'perSqm' | 'total' | null
 
+  // parsed numbers for calculations
+  const nla = parseInput(nlaStr);
+  const addon = parseInput(addonStr);
+  const rent = parseInput(rentStr);
+  const duration = parseInput(durationStr);
+  const rf = parseInput(rfStr);
+  const agentFeeMonths = parseInput(agentFeeMonthsStr);
   const fitOutPerSqm = parseInput(fitOutPerSqmStr);
   const fitOutTotalManual = parseInput(fitOutTotalStr);
 
-  const [agentFeeMonths, setAgentFeeMonths] = useState(4);
+  const gla = useMemo(() => nla * (1 + addon / 100), [nla, addon]);
+  const rentMonthsCharged = Math.max(0, duration - rf);
+  const grossRent = rent * gla * rentMonthsCharged;
 
-  const gla = useMemo(() => nn(nla) * (1 + nn(addon) / 100), [nla, addon]);
-  const rentMonthsCharged = Math.max(0, nn(duration) - nn(rf));
-  const grossRent = nn(rent) * gla * rentMonthsCharged;
-
-  // Keep fields in sync when NLA or mode changes, but don't touch the one being edited
+  // keep €/sqm & Total in sync when NLA or mode changes (but never overwrite the focused input)
   useEffect(() => {
-    if (fitOutMode === 'perSqm') {
-      if (focusField !== 'perSqm') {
-        const total = nn(fitOutPerSqm) * nn(nla);
-        setFitOutTotalStr(fmtInput(total));
-      }
+    if (fitOutMode === "perSqm") {
+      if (focusField !== "perSqm") setFitOutTotalStr(fmt2(fitOutPerSqm * nla));
     } else {
-      if (focusField !== 'total') {
-        const per = nn(nla) > 0 ? nn(fitOutTotalManual) / nn(nla) : 0;
-        setFitOutPerSqmStr(fmtInput(per));
-      }
+      if (focusField !== "total")
+        setFitOutPerSqmStr(fmt2(nla > 0 ? fitOutTotalManual / nla : 0));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nla, fitOutMode]);
 
   const totalFitOut =
-    fitOutMode === 'total' ? nn(fitOutTotalManual) : nn(fitOutPerSqm) * nn(nla);
-
+    fitOutMode === "total" ? nn(fitOutTotalManual) : nn(fitOutPerSqm) * nn(nla);
   const agentFees = nn(agentFeeMonths) * nn(rent) * gla;
 
-  const denom = Math.max(1e-9, nn(duration) * gla);
+  const denom = Math.max(1e-9, duration * gla);
   const ner1 = grossRent / denom;
   const ner2 = (grossRent - totalFitOut) / denom;
   const ner3 = (grossRent - totalFitOut - agentFees) / denom;
 
   const reduction = (ner) => {
-    const r = nn(rent);
-    const diff = r - ner;
-    const percent = r > 0 ? (diff / r) * 100 : 0;
-    return { value: percent.toFixed(2), color: percent === 0 ? 'text-black' : 'text-red-600' };
+    const diff = rent - ner;
+    const percent = rent > 0 ? (diff / rent) * 100 : 0;
+    return { value: percent.toFixed(2), color: percent === 0 ? "text-black" : "text-red-600" };
   };
 
   return (
@@ -83,126 +80,169 @@ export default function NERCalculator() {
       <h2 className="text-2xl font-bold">Net Effective Rent Calculator</h2>
 
       <div className="grid grid-cols-2 gap-4">
+        {/* NLA */}
         <label className="block">
           <span className="text-gray-700">NLA (sqm)</span>
-          <input type="number" min={0} value={nla}
-            onChange={(e) => setNla(nn(e.target.value))}
-            className="mt-1 block w-full border rounded-md p-2" />
+          <input
+            type="text"
+            inputMode="numeric"
+            value={nlaStr}
+            onChange={(e) => setNlaStr(e.target.value.replace(/[^\d.,]/g, ""))}
+            onBlur={() => setNlaStr(fmtInt(nla))}
+            className="mt-1 block w-full border rounded-md p-2"
+          />
         </label>
 
+        {/* Add-On */}
         <label className="block">
           <span className="text-gray-700">Add-On (%)</span>
-          <input type="number" min={0} value={addon}
-            onChange={(e) => setAddon(nn(e.target.value))}
-            className="mt-1 block w-full border rounded-md p-2" />
+          <input
+            type="text"
+            inputMode="decimal"
+            value={addonStr}
+            onChange={(e) => setAddonStr(e.target.value.replace(/[^\d.,]/g, ""))}
+            onBlur={() => setAddonStr(fmt2(addon))}
+            className="mt-1 block w-full border rounded-md p-2"
+          />
         </label>
 
+        {/* GLA */}
         <label className="block">
           <span className="text-gray-700">GLA (sqm)</span>
-          <input type="text" readOnly value={gla.toFixed(2)}
-            className="mt-1 block w-full border rounded-md p-2 bg-gray-100 text-gray-600" />
+          <input
+            type="text"
+            readOnly
+            value={gla.toFixed(2)}
+            className="mt-1 block w-full border rounded-md p-2 bg-gray-100 text-gray-600"
+          />
         </label>
 
+        {/* Headline Rent */}
         <label className="block">
           <span className="text-gray-700">Headline Rent €/sqm</span>
-          <input type="number" min={0} value={rent}
-            onChange={(e) => setRent(nn(e.target.value))}
-            className="mt-1 block w-full border rounded-md p-2" />
+          <input
+            type="text"
+            inputMode="decimal"
+            value={rentStr}
+            onChange={(e) => setRentStr(e.target.value.replace(/[^\d.,]/g, ""))}
+            onBlur={() => setRentStr(fmt2(rent))}
+            className="mt-1 block w-full border rounded-md p-2"
+          />
         </label>
 
+        {/* Lease Term */}
         <label className="block">
           <span className="text-gray-700">Lease Term (months)</span>
-          <input type="number" min={0} value={duration}
-            onChange={(e) => setDuration(nn(e.target.value))}
-            className="mt-1 block w-full border rounded-md p-2" />
+          <input
+            type="text"
+            inputMode="numeric"
+            value={durationStr}
+            onChange={(e) => setDurationStr(e.target.value.replace(/[^\d]/g, ""))}
+            onBlur={() => setDurationStr(fmtInt(duration))}
+            className="mt-1 block w-full border rounded-md p-2"
+          />
         </label>
 
+        {/* Rent-Free */}
         <label className="block">
           <span className="text-gray-700">Rent-Free (months)</span>
-          <input type="number" min={0} value={rf}
-            onChange={(e) => setRf(nn(e.target.value))}
-            className="mt-1 block w-full border rounded-md p-2" />
+          <input
+            type="text"
+            inputMode="numeric"
+            value={rfStr}
+            onChange={(e) => setRfStr(e.target.value.replace(/[^\d]/g, ""))}
+            onBlur={() => setRfStr(fmtInt(rf))}
+            className="mt-1 block w-full border rounded-md p-2"
+          />
         </label>
 
-        {/* ---- FIT-OUT SECTION ---- */}
+        {/* -------- FIT-OUTS -------- */}
         <div className="col-span-2 border rounded-md p-3">
           <div className="flex items-center gap-4 mb-3">
             <span className="text-gray-700 font-medium">Fit-Out Input:</span>
             <label className="inline-flex items-center gap-2">
-              <input type="radio" name="fitout-mode"
-                checked={fitOutMode === 'perSqm'}
-                onChange={() => setFitOutMode('perSqm')} />
+              <input
+                type="radio"
+                name="fitout-mode"
+                checked={fitOutMode === "perSqm"}
+                onChange={() => setFitOutMode("perSqm")}
+              />
               <span>€/sqm (NLA)</span>
             </label>
             <label className="inline-flex items-center gap-2">
-              <input type="radio" name="fitout-mode"
-                checked={fitOutMode === 'total'}
-                onChange={() => setFitOutMode('total')} />
+              <input
+                type="radio"
+                name="fitout-mode"
+                checked={fitOutMode === "total"}
+                onChange={() => setFitOutMode("total")}
+              />
               <span>Total (€)</span>
             </label>
           </div>
 
-          {/* €/sqm input (no formatting while typing; format on blur) */}
+          {/* €/sqm */}
           <label className="block mb-2">
             <span className="text-gray-700">Fit-Out €/sqm (NLA)</span>
             <input
               type="text"
               inputMode="decimal"
               value={fitOutPerSqmStr}
-              onFocus={() => setFocusField('perSqm')}
+              onFocus={() => setFocusField("perSqm")}
               onBlur={() => {
                 setFocusField(null);
-                setFitOutPerSqmStr(fmtInput(parseInput(fitOutPerSqmStr)));
+                setFitOutPerSqmStr(fmt2(parseInput(fitOutPerSqmStr)));
               }}
               onChange={(e) => {
-                const raw = e.target.value.replace(/[^\d.,]/g, '');
+                const raw = e.target.value.replace(/[^\d.,]/g, "");
                 setFitOutPerSqmStr(raw);
-                if (fitOutMode === 'perSqm') {
-                  const val = parseInput(raw);
-                  setFitOutTotalStr(fmtInput(val * nn(nla)));
-                }
+                if (fitOutMode === "perSqm") setFitOutTotalStr(fmt2(parseInput(raw) * nla));
               }}
-              readOnly={fitOutMode === 'total'}
+              readOnly={fitOutMode === "total"}
               className={`mt-1 block w-full border rounded-md p-2 ${
-                fitOutMode === 'total' ? 'bg-gray-100 text-gray-600' : ''
+                fitOutMode === "total" ? "bg-gray-100 text-gray-600" : ""
               }`}
             />
           </label>
 
-          {/* Total input (no formatting while typing; format on blur) */}
+          {/* Total (€) */}
           <label className="block">
             <span className="text-gray-700">Fit-Out Total (€)</span>
             <input
               type="text"
               inputMode="decimal"
               value={fitOutTotalStr}
-              onFocus={() => setFocusField('total')}
+              onFocus={() => setFocusField("total")}
               onBlur={() => {
                 setFocusField(null);
-                setFitOutTotalStr(fmtInput(parseInput(fitOutTotalStr)));
+                setFitOutTotalStr(fmt2(parseInput(fitOutTotalStr)));
               }}
               onChange={(e) => {
-                const raw = e.target.value.replace(/[^\d.,]/g, '');
+                const raw = e.target.value.replace(/[^\d.,]/g, "");
                 setFitOutTotalStr(raw);
-                if (fitOutMode === 'total') {
+                if (fitOutMode === "total") {
                   const val = parseInput(raw);
-                  const per = nn(nla) > 0 ? val / nn(nla) : 0;
-                  setFitOutPerSqmStr(fmtInput(per));
+                  setFitOutPerSqmStr(fmt2(nla > 0 ? val / nla : 0));
                 }
               }}
-              readOnly={fitOutMode === 'perSqm'}
+              readOnly={fitOutMode === "perSqm"}
               className={`mt-1 block w-full border rounded-md p-2 ${
-                fitOutMode === 'perSqm' ? 'bg-gray-100 text-gray-600' : ''
+                fitOutMode === "perSqm" ? "bg-gray-100 text-gray-600" : ""
               }`}
             />
           </label>
         </div>
 
+        {/* Agent Fees (months) */}
         <label className="block">
           <span className="text-gray-700">Agent Fees (months)</span>
-          <input type="number" min={0} value={agentFeeMonths}
-            onChange={(e) => setAgentFeeMonths(nn(e.target.value))}
-            className="mt-1 block w-full border rounded-md p-2" />
+          <input
+            type="text"
+            inputMode="numeric"
+            value={agentFeeMonthsStr}
+            onChange={(e) => setAgentFeeMonthsStr(e.target.value.replace(/[^\d]/g, ""))}
+            onBlur={() => setAgentFeeMonthsStr(fmtInt(agentFeeMonths))}
+            className="mt-1 block w-full border rounded-md p-2"
+          />
         </label>
       </div>
 
@@ -210,18 +250,20 @@ export default function NERCalculator() {
         <p className="text-sm text-red-500 font-semibold">
           Total Fit Out Costs: {fmtEUR(totalFitOut)}
         </p>
-        <p><strong>Headline Rent:</strong> {nn(rent).toFixed(2)} €/sqm</p>
         <p>
-          1️⃣ NER incl. Rent Frees: <b>{ner1.toFixed(2)} €/sqm</b>{' '}
+          <strong>Headline Rent:</strong> {fmt2(rent)} €/sqm
+        </p>
+
+        <p>
+          1️⃣ NER incl. Rent Frees: <b>{ner1.toFixed(2)} €/sqm</b>{" "}
           <span className={reduction(ner1).color}>({reduction(ner1).value}% ↓)</span>
         </p>
         <p>
-          2️⃣ incl. Rent Frees &amp; Fit-Outs: <b>{ner2.toFixed(2)} €/sqm</b>{' '}
+          2️⃣ incl. Rent Frees &amp; Fit-Outs: <b>{ner2.toFixed(2)} €/sqm</b>{" "}
           <span className={reduction(ner2).color}>({reduction(ner2).value}% ↓)</span>
         </p>
         <p>
-          3️⃣ incl. Rent Frees, Fit-Outs &amp; Agent Fees:{' '}
-          <b>{ner3.toFixed(2)} €/sqm</b>{' '}
+          3️⃣ incl. Rent Frees, Fit-Outs &amp; Agent Fees: <b>{ner3.toFixed(2)} €/sqm</b>{" "}
           <span className={reduction(ner3).color}>({reduction(ner3).value}% ↓)</span>
         </p>
       </div>
