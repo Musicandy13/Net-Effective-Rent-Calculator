@@ -39,7 +39,7 @@ function NumericField({
   step = 1,
   min = 0,
   readOnly = false,
-  format = "2dec", // 'int' | '2dec' | '1dec-trim'
+  format = "2dec", // 'int' | '2dec' | '1dec' | '1dec-trim'
   inputMode = "decimal",
   className = "",
   onCommit, // optional callback with parsed number when user blurs
@@ -51,6 +51,8 @@ function NumericField({
     ? valueStr
     : format === "2dec"
     ? fmtFixed(valNum, 2)
+    : format === "1dec"
+    ? fmtFixed(valNum, 1) // always one decimal
     : format === "1dec-trim"
     ? (() => {
         const isInt = Math.abs(valNum - Math.round(valNum)) < 1e-9;
@@ -75,11 +77,10 @@ function NumericField({
         onBlur={(e) => {
           setFocused(false);
           const n = clampNN(parseFlexible(e.target.value));
-          setValueStr(String(n)); // keep exactly what user meant (supports , or .)
+          setValueStr(String(n)); // preserve what user typed
           onCommit?.(n);
         }}
         onChange={(e) => {
-          // allow digits, dot, comma and minus (minus ignored due to min=0)
           const raw = e.target.value.replace(/[^\d.,-]/g, "");
           setValueStr(raw);
         }}
@@ -98,8 +99,8 @@ export default function App() {
   const [addonStr, setAddonStr] = useState("22.00");      // 2 decimals, step 1
   const [rentStr, setRentStr] = useState("225.56");       // 2 decimals, step 1
   const [durationStr, setDurationStr] = useState("84");   // integer
-  const [rfStr, setRfStr] = useState("7");                // integer display (can type decimals if you want)
-  const [agentFeeMonthsStr, setAgentFeeMonthsStr] = useState("4"); // integer display
+  const [rfStr, setRfStr] = useState("7");                // show 1 decimal on blur
+  const [agentFeeMonthsStr, setAgentFeeMonthsStr] = useState("4"); // 1 decimal on blur
 
   // Fit-Out mode + fields (as strings)
   const [fitOutMode, setFitOutMode] = useState("perSqm"); // 'perSqm' | 'total'
@@ -150,17 +151,18 @@ export default function App() {
       <h2 className="text-2xl font-bold">Net Effective Rent Calculator</h2>
 
       <div className="grid grid-cols-2 gap-4">
+        {/* NLA → 2 decimals on blur, step 1 (spinner unchanged) */}
         <NumericField
           label="NLA (sqm)"
           valueStr={nlaStr}
           setValueStr={setNlaStr}
           step={1}
           min={0}
-          inputMode="numeric"
-          format="int"
+          inputMode="decimal"
+          format="2dec"
         />
 
-        {/* Add-On now identical to Rent: 2 decimals, step 1 */}
+        {/* Add-On (unchanged: 2 decimals) */}
         <NumericField
           label="Add-On (%)"
           valueStr={addonStr}
@@ -199,17 +201,18 @@ export default function App() {
           format="int"
         />
 
+        {/* Rent-Free months → always show 1 decimal on blur */}
         <NumericField
           label="Rent-Free (months)"
           valueStr={rfStr}
           setValueStr={setRfStr}
           step={1}
           min={0}
-          format="int"
+          format="1dec"
         />
       </div>
 
-      {/* -------- FIT-OUTS (both like Rent: 2 decimals, step 1) -------- */}
+      {/* -------- FIT-OUTS (2 decimals, step 1) -------- */}
       <div className="border rounded-md p-3">
         <div className="flex items-center gap-4 mb-3">
           <span className="text-gray-700 font-medium">Fit-Out Input:</span>
@@ -233,14 +236,12 @@ export default function App() {
           </label>
         </div>
 
-        {/* €/sqm — 2 decimals, step 1, supports , or . as decimal */}
         <NumericField
           label="Fit-Out €/sqm (NLA)"
           valueStr={fitOutPerSqmStr}
           setValueStr={(s) => {
             setFitOutPerSqmStr(s);
             if (fitOutMode === "perSqm") {
-              // live sync total while typing
               const val = clampNN(parseFlexible(s));
               setFitOutTotalStr(String(val * clampNN(parseFlexible(nlaStr))));
             }
@@ -257,7 +258,6 @@ export default function App() {
           readOnly={fitOutMode === "total"}
         />
 
-        {/* Total (€) — 2 decimals, step 1 */}
         <NumericField
           label="Fit-Out Total (€)"
           valueStr={fitOutTotalStr}
@@ -284,22 +284,27 @@ export default function App() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 mt-4">
+        {/* Agent Fees months → always show 1 decimal on blur */}
         <NumericField
           label="Agent Fees (months)"
           valueStr={agentFeeMonthsStr}
           setValueStr={setAgentFeeMonthsStr}
           step={1}
           min={0}
-          format="int"
+          format="1dec"
         />
       </div>
 
       <div className="pt-6 space-y-2 text-left">
         <p className="text-sm text-red-500 font-semibold">
-          Total Fit Out Costs: {fmtEUR(totalFitOut)}
+          Total Fit Out Costs: {fmtEUR(
+            fitOutMode === "total"
+              ? clampNN(parseFlexible(fitOutTotalStr))
+              : clampNN(parseFlexible(fitOutPerSqmStr)) * clampNN(parseFlexible(nlaStr))
+          )}
         </p>
         <p>
-          <strong>Headline Rent:</strong> {fmtFixed(rent, 2)} €/sqm
+          <strong>Headline Rent:</strong> {fmtFixed(clampNN(parseFlexible(rentStr)), 2)} €/sqm
         </p>
         <p>
           1️⃣ NER incl. Rent Frees: <b>{ner1.toFixed(2)} €/sqm</b>{" "}
