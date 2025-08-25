@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 
-/* ---------------- Helpers ---------------- */
-const parseInput = (v) => {
+/* ---------- Format / Parse helpers ---------- */
+const parseFlexible = (v) => {
   const clean = String(v ?? "").replace(/,/g, "").trim();
   const n = parseFloat(clean);
-  return Number.isFinite(n) && n >= 0 ? n : 0;
+  return Number.isFinite(n) ? n : 0;
 };
-const fmt2 = (n) =>
-  new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    .format(Number.isFinite(n) ? n : 0);
-const fmtInt = (n) => String(Math.max(0, Math.round(Number(n) || 0)));
+const clampNonNegative = (n) => (n >= 0 ? n : 0);
+const fmtFixed = (n, decimals) =>
+  new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(Number.isFinite(n) ? n : 0);
 const fmtEUR = (n) =>
   (n ?? 0).toLocaleString("en-US", {
     style: "currency",
@@ -17,52 +19,104 @@ const fmtEUR = (n) =>
     minimumFractionDigits: 0,
     maximumFractionDigits: Math.abs(n - Math.trunc(n)) < 1e-9 ? 0 : 2,
   });
-const nn = (v) => (Number.isFinite(+v) && +v >= 0 ? +v : 0);
 
-/* ---------------- App ---------------- */
+/* ---------- Reusable numeric field ----------
+   - Spinner arrows when focused (type="number")
+   - Pretty formatting on blur (type="text")
+   - Accepts . or , while typing
+------------------------------------------------ */
+function NumericField({
+  label,
+  valueStr,
+  setValueStr,
+  decimals = 0,
+  step = 1,
+  min = 0,
+  readOnly = false,
+  className = "",
+  inputMode = "decimal",
+}) {
+  const [focused, setFocused] = useState(false);
+
+  const displayStr = focused
+    ? valueStr // raw while editing
+    : fmtFixed(parseFlexible(valueStr), decimals); // pretty on blur
+
+  return (
+    <label className="block">
+      <span className="text-gray-700">{label}</span>
+      <input
+        type={focused ? "number" : "text"}
+        inputMode={focused ? "decimal" : "text"} // show numeric keypad on focus (mobile)
+        value={displayStr}
+        min={min}
+        step={step}
+        readOnly={readOnly && !focused}
+        onFocus={() => setFocused(true)}
+        onBlur={(e) => {
+          setFocused(false);
+          const n = clampNonNegative(parseFlexible(e.target.value));
+          setValueStr(fmtFixed(n, decimals));
+        }}
+        onChange={(e) => {
+          // Allow only digits, dot, comma, minus (minus ignored since min=0) and one dot/comma
+          const raw = e.target.value.replace(/[^\d.,-]/g, "");
+          setValueStr(raw);
+        }}
+        className={`mt-1 block w-full border rounded-md p-2 ${readOnly ? "bg-gray-100 text-gray-600" : ""} ${className}`}
+      />
+    </label>
+  );
+}
+
+/* ---------- App ---------- */
 export default function NERCalculator() {
-  // all inputs as RAW STRINGS (no formatting while typing)
-  const [nlaStr, setNlaStr] = useState("1000");
-  const [addonStr, setAddonStr] = useState("5");
-  const [rentStr, setRentStr] = useState("13");
-  const [durationStr, setDurationStr] = useState("84");
-  const [rfStr, setRfStr] = useState("7");
-  const [agentFeeMonthsStr, setAgentFeeMonthsStr] = useState("4");
+  // Keep everything as strings for perfect caret control
+  const [nlaStr, setNlaStr] = useState("1000");               // int (spinner)
+  const [addonStr, setAddonStr] = useState("5.00");           // 2 decimals (spinner)
+  const [rentStr, setRentStr] = useState("13.00");            // 2 decimals (spinner)
+  const [durationStr, setDurationStr] = useState("84");       // int (spinner)
+  const [rfStr, setRfStr] = useState("7.0");                  // 1 decimal (spinner)  <-- as requested
+  const [agentFeeMonthsStr, setAgentFeeMonthsStr] = useState("4.0"); // 1 decimal (spinner)
 
-  // fit-out input mode & raw strings
+  // Fit-out mode and fields (keep the nice bidirectional behavior)
   const [fitOutMode, setFitOutMode] = useState("perSqm"); // 'perSqm' | 'total'
-  const [fitOutPerSqmStr, setFitOutPerSqmStr] = useState(fmt2(150));
-  const [fitOutTotalStr, setFitOutTotalStr] = useState(fmt2(150 * 1000));
+  const [fitOutPerSqmStr, setFitOutPerSqmStr] = useState("150.00");
+  const [fitOutTotalStr, setFitOutTotalStr] = useState("150000.00");
   const [focusField, setFocusField] = useState(null); // 'perSqm' | 'total' | null
 
-  // parsed numbers for calculations
-  const nla = parseInput(nlaStr);
-  const addon = parseInput(addonStr);
-  const rent = parseInput(rentStr);
-  const duration = parseInput(durationStr);
-  const rf = parseInput(rfStr);
-  const agentFeeMonths = parseInput(agentFeeMonthsStr);
-  const fitOutPerSqm = parseInput(fitOutPerSqmStr);
-  const fitOutTotalManual = parseInput(fitOutTotalStr);
+  // Parsed numbers for calculations
+  const nla = clampNonNegative(parseFlexible(nlaStr));
+  const addon = clampNonNegative(parseFlexible(addonStr));
+  const rent = clampNonNegative(parseFlexible(rentStr));
+  const duration = clampNonNegative(parseFlexible(durationStr));
+  const rf = clampNonNegative(parseFlexible(rfStr));
+  const agentFeeMonths = clampNonNegative(parseFlexible(agentFeeMonthsStr));
+  const fitOutPerSqm = clampNonNegative(parseFlexible(fitOutPerSqmStr));
+  const fitOutTotalManual = clampNonNegative(parseFlexible(fitOutTotalStr));
 
   const gla = useMemo(() => nla * (1 + addon / 100), [nla, addon]);
   const rentMonthsCharged = Math.max(0, duration - rf);
   const grossRent = rent * gla * rentMonthsCharged;
 
-  // keep €/sqm & Total in sync when NLA or mode changes (but never overwrite the focused input)
+  // Sync Fit-Out fields when NLA or mode changes, but don't overwrite focused field
   useEffect(() => {
     if (fitOutMode === "perSqm") {
-      if (focusField !== "perSqm") setFitOutTotalStr(fmt2(fitOutPerSqm * nla));
+      if (focusField !== "perSqm") {
+        const total = fitOutPerSqm * nla;
+        setFitOutTotalStr(String(total)); // leave raw; components format on blur
+      }
     } else {
-      if (focusField !== "total")
-        setFitOutPerSqmStr(fmt2(nla > 0 ? fitOutTotalManual / nla : 0));
+      if (focusField !== "total") {
+        const per = nla > 0 ? fitOutTotalManual / nla : 0;
+        setFitOutPerSqmStr(String(per));
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nla, fitOutMode]);
 
-  const totalFitOut =
-    fitOutMode === "total" ? nn(fitOutTotalManual) : nn(fitOutPerSqm) * nn(nla);
-  const agentFees = nn(agentFeeMonths) * nn(rent) * gla;
+  const totalFitOut = fitOutMode === "total" ? fitOutTotalManual : fitOutPerSqm * nla;
+  const agentFees = agentFeeMonths * rent * gla;
 
   const denom = Math.max(1e-9, duration * gla);
   const ner1 = grossRent / denom;
@@ -80,81 +134,68 @@ export default function NERCalculator() {
       <h2 className="text-2xl font-bold">Net Effective Rent Calculator</h2>
 
       <div className="grid grid-cols-2 gap-4">
-        {/* NLA */}
-        <label className="block">
-          <span className="text-gray-700">NLA (sqm)</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={nlaStr}
-            onChange={(e) => setNlaStr(e.target.value.replace(/[^\d.,]/g, ""))}
-            onBlur={() => setNlaStr(fmtInt(nla))}
-            className="mt-1 block w-full border rounded-md p-2"
-          />
-        </label>
+        {/* NLA (integer with spinner) */}
+        <NumericField
+          label="NLA (sqm)"
+          valueStr={nlaStr}
+          setValueStr={setNlaStr}
+          decimals={0}
+          step={1}
+          min={0}
+          inputMode="numeric"
+        />
 
-        {/* Add-On */}
-        <label className="block">
-          <span className="text-gray-700">Add-On (%)</span>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={addonStr}
-            onChange={(e) => setAddonStr(e.target.value.replace(/[^\d.,]/g, ""))}
-            onBlur={() => setAddonStr(fmt2(addon))}
-            className="mt-1 block w-full border rounded-md p-2"
-          />
-        </label>
+        {/* Add-On % (2 decimals with spinner) */}
+        <NumericField
+          label="Add-On (%)"
+          valueStr={addonStr}
+          setValueStr={setAddonStr}
+          decimals={2}
+          step={0.1}
+          min={0}
+        />
 
-        {/* GLA */}
+        {/* GLA read-only */}
         <label className="block">
           <span className="text-gray-700">GLA (sqm)</span>
           <input
             type="text"
             readOnly
-            value={gla.toFixed(2)}
+            value={fmtFixed(gla, 2)}
             className="mt-1 block w-full border rounded-md p-2 bg-gray-100 text-gray-600"
           />
         </label>
 
-        {/* Headline Rent */}
-        <label className="block">
-          <span className="text-gray-700">Headline Rent €/sqm</span>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={rentStr}
-            onChange={(e) => setRentStr(e.target.value.replace(/[^\d.,]/g, ""))}
-            onBlur={() => setRentStr(fmt2(rent))}
-            className="mt-1 block w-full border rounded-md p-2"
-          />
-        </label>
+        {/* Headline Rent (2 decimals with spinner) */}
+        <NumericField
+          label="Headline Rent €/sqm"
+          valueStr={rentStr}
+          setValueStr={setRentStr}
+          decimals={2}
+          step={0.1}
+          min={0}
+        />
 
-        {/* Lease Term */}
-        <label className="block">
-          <span className="text-gray-700">Lease Term (months)</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={durationStr}
-            onChange={(e) => setDurationStr(e.target.value.replace(/[^\d]/g, ""))}
-            onBlur={() => setDurationStr(fmtInt(duration))}
-            className="mt-1 block w-full border rounded-md p-2"
-          />
-        </label>
+        {/* Lease Term (integer with spinner) */}
+        <NumericField
+          label="Lease Term (months)"
+          valueStr={durationStr}
+          setValueStr={setDurationStr}
+          decimals={0}
+          step={1}
+          min={0}
+          inputMode="numeric"
+        />
 
-        {/* Rent-Free */}
-        <label className="block">
-          <span className="text-gray-700">Rent-Free (months)</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={rfStr}
-            onChange={(e) => setRfStr(e.target.value.replace(/[^\d]/g, ""))}
-            onBlur={() => setRfStr(fmtInt(rf))}
-            className="mt-1 block w-full border rounded-md p-2"
-          />
-        </label>
+        {/* Rent-Free (1 decimal with spinner) */}
+        <NumericField
+          label="Rent-Free (months)"
+          valueStr={rfStr}
+          setValueStr={setRfStr}
+          decimals={1}   // <-- one decimal month
+          step={0.1}
+          min={0}
+        />
 
         {/* -------- FIT-OUTS -------- */}
         <div className="col-span-2 border rounded-md p-3">
@@ -180,22 +221,25 @@ export default function NERCalculator() {
             </label>
           </div>
 
-          {/* €/sqm */}
+          {/* €/sqm (2 decimals); we keep the special bidirectional logic */}
           <label className="block mb-2">
             <span className="text-gray-700">Fit-Out €/sqm (NLA)</span>
             <input
               type="text"
               inputMode="decimal"
-              value={fitOutPerSqmStr}
+              value={fmtFixed(parseFlexible(fitOutPerSqmStr), 2)}
               onFocus={() => setFocusField("perSqm")}
-              onBlur={() => {
+              onBlur={(e) => {
                 setFocusField(null);
-                setFitOutPerSqmStr(fmt2(parseInput(fitOutPerSqmStr)));
+                setFitOutPerSqmStr(String(clampNonNegative(parseFlexible(e.target.value))));
               }}
               onChange={(e) => {
-                const raw = e.target.value.replace(/[^\d.,]/g, "");
+                const raw = e.target.value.replace(/[^\d.,-]/g, "");
                 setFitOutPerSqmStr(raw);
-                if (fitOutMode === "perSqm") setFitOutTotalStr(fmt2(parseInput(raw) * nla));
+                if (fitOutMode === "perSqm") {
+                  const val = clampNonNegative(parseFlexible(raw));
+                  setFitOutTotalStr(String(val * nla));
+                }
               }}
               readOnly={fitOutMode === "total"}
               className={`mt-1 block w-full border rounded-md p-2 ${
@@ -204,24 +248,25 @@ export default function NERCalculator() {
             />
           </label>
 
-          {/* Total (€) */}
+          {/* Total (€) (2 decimals) */}
           <label className="block">
             <span className="text-gray-700">Fit-Out Total (€)</span>
             <input
               type="text"
               inputMode="decimal"
-              value={fitOutTotalStr}
+              value={fmtFixed(parseFlexible(fitOutTotalStr), 2)}
               onFocus={() => setFocusField("total")}
-              onBlur={() => {
+              onBlur={(e) => {
                 setFocusField(null);
-                setFitOutTotalStr(fmt2(parseInput(fitOutTotalStr)));
+                setFitOutTotalStr(String(clampNonNegative(parseFlexible(e.target.value))));
               }}
               onChange={(e) => {
-                const raw = e.target.value.replace(/[^\d.,]/g, "");
+                const raw = e.target.value.replace(/[^\d.,-]/g, "");
                 setFitOutTotalStr(raw);
                 if (fitOutMode === "total") {
-                  const val = parseInput(raw);
-                  setFitOutPerSqmStr(fmt2(nla > 0 ? val / nla : 0));
+                  const val = clampNonNegative(parseFlexible(raw));
+                  const per = nla > 0 ? val / nla : 0;
+                  setFitOutPerSqmStr(String(per));
                 }
               }}
               readOnly={fitOutMode === "perSqm"}
@@ -232,18 +277,15 @@ export default function NERCalculator() {
           </label>
         </div>
 
-        {/* Agent Fees (months) */}
-        <label className="block">
-          <span className="text-gray-700">Agent Fees (months)</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={agentFeeMonthsStr}
-            onChange={(e) => setAgentFeeMonthsStr(e.target.value.replace(/[^\d]/g, ""))}
-            onBlur={() => setAgentFeeMonthsStr(fmtInt(agentFeeMonths))}
-            className="mt-1 block w-full border rounded-md p-2"
-          />
-        </label>
+        {/* Agent Fees months (1 decimal with spinner) */}
+        <NumericField
+          label="Agent Fees (months)"
+          valueStr={agentFeeMonthsStr}
+          setValueStr={setAgentFeeMonthsStr}
+          decimals={1}  // <-- one decimal month
+          step={0.1}
+          min={0}
+        />
       </div>
 
       <div className="pt-6 space-y-2 text-left">
@@ -251,9 +293,8 @@ export default function NERCalculator() {
           Total Fit Out Costs: {fmtEUR(totalFitOut)}
         </p>
         <p>
-          <strong>Headline Rent:</strong> {fmt2(rent)} €/sqm
+          <strong>Headline Rent:</strong> {fmtFixed(rent, 2)} €/sqm
         </p>
-
         <p>
           1️⃣ NER incl. Rent Frees: <b>{ner1.toFixed(2)} €/sqm</b>{" "}
           <span className={reduction(ner1).color}>({reduction(ner1).value}% ↓)</span>
