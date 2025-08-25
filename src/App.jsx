@@ -20,11 +20,7 @@ const fmtEUR = (n) =>
     maximumFractionDigits: Math.abs(n - Math.trunc(n)) < 1e-9 ? 0 : 2,
   });
 
-/* ---------- Reusable numeric field ----------
-   - Spinner arrows (type="number") while focused
-   - Pretty formatting on blur
-   - Accepts . or , while typing
------------------------------------------------- */
+/* ---------- Reusable numeric field ---------- */
 function NumericField({
   label,
   valueStr,
@@ -55,6 +51,7 @@ function NumericField({
         onBlur={(e) => {
           setFocused(false);
           const n = clampNN(parseFlexible(e.target.value));
+          // keep decimals only if user entered them
           setValueStr(String(n));
         }}
         onChange={(e) => {
@@ -71,21 +68,21 @@ function NumericField({
 
 /* ---------------- App ---------------- */
 export default function App() {
-  // raw strings for perfect caret control
-  const [nlaStr, setNlaStr] = useState("1000");           // int
-  const [addonStr, setAddonStr] = useState("5.00");       // 2 dec
-  const [rentStr, setRentStr] = useState("13.00");        // 2 dec
-  const [durationStr, setDurationStr] = useState("84");   // int
-  const [rfStr, setRfStr] = useState("7.0");              // 1 dec
-  const [agentFeeMonthsStr, setAgentFeeMonthsStr] = useState("4.0"); // 1 dec
+  // raw strings
+  const [nlaStr, setNlaStr] = useState("1000");
+  const [addonStr, setAddonStr] = useState("5");
+  const [rentStr, setRentStr] = useState("13.00");
+  const [durationStr, setDurationStr] = useState("84");
+  const [rfStr, setRfStr] = useState("7");
+  const [agentFeeMonthsStr, setAgentFeeMonthsStr] = useState("4");
 
-  // Fit-Out mode + fields (bidirectional)
-  const [fitOutMode, setFitOutMode] = useState("perSqm"); // 'perSqm' | 'total'
-  const [fitOutPerSqmStr, setFitOutPerSqmStr] = useState("150.00");
-  const [fitOutTotalStr, setFitOutTotalStr] = useState("150000.00");
-  const [focusField, setFocusField] = useState(null); // 'perSqm' | 'total' | null
+  // Fit-Out mode + fields
+  const [fitOutMode, setFitOutMode] = useState("perSqm");
+  const [fitOutPerSqmStr, setFitOutPerSqmStr] = useState("150");
+  const [fitOutTotalStr, setFitOutTotalStr] = useState("150000");
+  const [focusField, setFocusField] = useState(null);
 
-  // parsed numbers
+  // parsed
   const nla = clampNN(parseFlexible(nlaStr));
   const addon = clampNN(parseFlexible(addonStr));
   const rent = clampNN(parseFlexible(rentStr));
@@ -99,7 +96,6 @@ export default function App() {
   const rentMonthsCharged = Math.max(0, duration - rf);
   const grossRent = rent * gla * rentMonthsCharged;
 
-  // keep €/sqm & total synced with NLA and mode (without touching focused field)
   useEffect(() => {
     if (fitOutMode === "perSqm") {
       if (focusField !== "perSqm") setFitOutTotalStr(String(fitOutPerSqm * nla));
@@ -122,7 +118,10 @@ export default function App() {
   const reduction = (ner) => {
     const diff = rent - ner;
     const percent = rent > 0 ? (diff / rent) * 100 : 0;
-    return { value: percent.toFixed(2), color: percent === 0 ? "text-black" : "text-red-600" };
+    return {
+      value: percent.toFixed(2),
+      color: percent === 0 ? "text-black" : "text-red-600",
+    };
   };
 
   return (
@@ -144,8 +143,8 @@ export default function App() {
           label="Add-On (%)"
           valueStr={addonStr}
           setValueStr={setAddonStr}
-          decimals={2}
-          step={0.1}
+          decimals={0} // show integers by default
+          step={1}
           min={0}
         />
 
@@ -163,8 +162,8 @@ export default function App() {
           label="Headline Rent €/sqm"
           valueStr={rentStr}
           setValueStr={setRentStr}
-          decimals={2}
-          step={0.1}
+          decimals={2} // keep 2 decimals
+          step={1}
           min={0}
         />
 
@@ -182,8 +181,8 @@ export default function App() {
           label="Rent-Free (months)"
           valueStr={rfStr}
           setValueStr={setRfStr}
-          decimals={1}
-          step={0.1}
+          decimals={0} // show whole numbers by default
+          step={1}
           min={0}
         />
 
@@ -211,7 +210,7 @@ export default function App() {
             </label>
           </div>
 
-          {/* €/sqm — RAW while focused, formatted on blur */}
+          {/* €/sqm */}
           <label className="block mb-2">
             <span className="text-gray-700">Fit-Out €/sqm (NLA)</span>
             <input
@@ -220,7 +219,7 @@ export default function App() {
               value={
                 focusField === "perSqm"
                   ? fitOutPerSqmStr
-                  : fmtFixed(parseFlexible(fitOutPerSqmStr), 2)
+                  : fmtFixed(parseFlexible(fitOutPerSqmStr), 0)
               }
               onFocus={() => setFocusField("perSqm")}
               onBlur={(e) => {
@@ -244,7 +243,7 @@ export default function App() {
             />
           </label>
 
-          {/* Total (€) — RAW while focused, formatted on blur */}
+          {/* Total */}
           <label className="block">
             <span className="text-gray-700">Fit-Out Total (€)</span>
             <input
@@ -253,7 +252,7 @@ export default function App() {
               value={
                 focusField === "total"
                   ? fitOutTotalStr
-                  : fmtFixed(parseFlexible(fitOutTotalStr), 2)
+                  : fmtFixed(parseFlexible(fitOutTotalStr), 0)
               }
               onFocus={() => setFocusField("total")}
               onBlur={(e) => {
@@ -284,8 +283,8 @@ export default function App() {
           label="Agent Fees (months)"
           valueStr={agentFeeMonthsStr}
           setValueStr={setAgentFeeMonthsStr}
-          decimals={1}
-          step={0.1}
+          decimals={0}
+          step={1}
           min={0}
         />
       </div>
@@ -299,15 +298,22 @@ export default function App() {
         </p>
         <p>
           1️⃣ NER incl. Rent Frees: <b>{ner1.toFixed(2)} €/sqm</b>{" "}
-          <span className={reduction(ner1).color}>({reduction(ner1).value}% ↓)</span>
+          <span className={reduction(ner1).color}>
+            ({reduction(ner1).value}% ↓)
+          </span>
         </p>
         <p>
           2️⃣ incl. Rent Frees &amp; Fit-Outs: <b>{ner2.toFixed(2)} €/sqm</b>{" "}
-          <span className={reduction(ner2).color}>({reduction(ner2).value}% ↓)</span>
+          <span className={reduction(ner2).color}>
+            ({reduction(ner2).value}% ↓)
+          </span>
         </p>
         <p>
-          3️⃣ incl. Rent Frees, Fit-Outs &amp; Agent Fees: <b>{ner3.toFixed(2)} €/sqm</b>{" "}
-          <span className={reduction(ner3).color}>({reduction(ner3).value}% ↓)</span>
+          3️⃣ incl. Rent Frees, Fit-Outs &amp; Agent Fees:{" "}
+          <b>{ner3.toFixed(2)} €/sqm</b>{" "}
+          <span className={reduction(ner3).color}>
+            ({reduction(ner3).value}% ↓)
+          </span>
         </p>
       </div>
     </div>
