@@ -33,7 +33,7 @@ function NumericField({ label, value, onChange, format="2dec", step=1, min=0, re
 
 export default function App() {
   const [f, setF] = useState({
-    nla:"1000", addon:"22.00", rent:"225.56", duration:"84", rf:"7", agent:"4",
+    nla:"1000", addon:"5.00", rent:"15.00", duration:"60", rf:"7", agent:"2",
     fitMode:"perSqm", fitPer:"150.00", fitTot:"150000.00",
   });
   const S = (k) => (v) => setF(s => ({ ...s, [k]: v }));
