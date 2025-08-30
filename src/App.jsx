@@ -18,8 +18,8 @@ function Delta({base, val}) {
   const rounded = Math.abs(pct) < 0.005 ? 0 : pct;
   const up = rounded > 0, down = rounded < 0;
   return (
-    <span className={`${up?"text-red-600":down?"text-green-600":"text-gray-500"} font-medium ml-2`}>
-      {up ? "▲" : down ? "▼" : "■"} {F(Math.abs(rounded),2)}%
+    <span className={`${down?"text-red-600":up?"text-green-600":"text-gray-500"} font-medium ml-2`}>
+      {down ? "▼" : up ? "▲" : "■"} {F(Math.abs(rounded),2)}%
     </span>
   );
 }
