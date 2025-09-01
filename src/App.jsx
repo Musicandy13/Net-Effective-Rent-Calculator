@@ -8,7 +8,7 @@ import {
   Tooltip,
   LabelList,
   ReferenceLine,
-  Cell, // wichtig für individuelle Balkenfarben
+  Cell, // für individuelle Balkenfarben
 } from "recharts";
 
 /* ---------- utils ---------- */
@@ -32,11 +32,8 @@ const FCUR = (n) =>
   });
 
 /* Geldwert mit Farbe je nach Vorzeichen */
-function Money({ value, strong = true, alignRight = false }) {
-  const cls =
-    (value < 0 ? "text-red-600" : "text-gray-900") +
-    (strong ? " font-medium" : "") +
-    (alignRight ? " text-right" : "");
+function Money({ value }) {
+  const cls = value < 0 ? "text-red-600 font-medium" : "text-gray-900 font-medium";
   return <span className={cls}>{FCUR(value)}</span>;
 }
 
@@ -99,19 +96,31 @@ function NumericField({
   );
 }
 
-/* ---------- Custom Labels für Charts ---------- */
-// Prozent-Label über den NER-Balken (rot mit Minus, grün mit +)
-const PercentLabel = ({ x, y, value }) => {
+/* ---------- Custom Chart Labels ---------- */
+// Prozentlabel: exakt über dem Balken, mittig ausgerichtet
+const PercentLabel = ({ x, y, width, value }) => {
   if (value == null) return null;
-  const fill = value < 0 ? "#dc2626" : "#16a34a";
+  const cx = x + width / 2;
+  const fill = value < 0 ? "#dc2626" : "#16a34a"; // rot / grün
   const sign = value > 0 ? "+" : "";
   return (
-    <text x={x} y={y - 4} textAnchor="middle" fill={fill} fontSize={12} fontWeight="700">
+    <text x={cx} y={y - 6} textAnchor="middle" fill={fill} fontSize={12} fontWeight="700">
       {sign}{F(value, 2)}%
     </text>
   );
 };
-// Vertikales Währungslabel im Fit-Outs-Balken
+// Zahlen im NER-Balken (weiß, zentriert)
+const BarNumberLabel = ({ x, y, width, height, value }) => {
+  if (value == null) return null;
+  const cx = x + width / 2;
+  const cy = y + Math.max(14, Math.min(height - 4, 18)); // gut lesbare vertikale Position
+  return (
+    <text x={cx} y={cy} textAnchor="middle" fill="#ffffff" fontSize={12} fontWeight="700">
+      {F(value, 2)}
+    </text>
+  );
+};
+// Vertikales, größeres Währungslabel im Fit-Outs-Balken
 const VerticalMoneyLabel = ({ x, y, width, height, value }) => {
   if (value == null) return null;
   const cx = x + width / 2;
@@ -123,8 +132,8 @@ const VerticalMoneyLabel = ({ x, y, width, height, value }) => {
       transform={`rotate(-90, ${cx}, ${cy})`}
       textAnchor="middle"
       fill="#ffffff"
-      fontSize={12}
-      fontWeight="700"
+      fontSize={16}
+      fontWeight="800"
     >
       {FCUR(value)}
     </text>
@@ -166,7 +175,7 @@ export default function App() {
   const perGLA = clamp(P(f.fitPerGLA));
   const tot = clamp(P(f.fitTot));
 
-  // Sync der drei Fit-Out Eingaben
+  // Sync Fit-Out Eingaben
   useEffect(() => {
     const nNLA = clamp(P(f.fitPerNLA));
     const nGLA = clamp(P(f.fitPerGLA));
@@ -209,7 +218,7 @@ export default function App() {
 
   // Farben
   const FIT_OUT_COLOR = "#c2410c"; // dunkles Orange
-  const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"]; // Blautöne
+  const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"]; // 4 Blautöne
 
   // Chart-Daten
   const chartFitOutData = [{ name: "Fit-Outs", eur: totalFit }];
@@ -227,7 +236,7 @@ export default function App() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md">
-      {/* 1) Titel zentriert */}
+      {/* Titel zentriert */}
       <h2 className="text-2xl font-bold mb-4 text-center">Net Effective Rent Calculator</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -281,7 +290,7 @@ export default function App() {
         {/* RIGHT: Results */}
         <div className="md:sticky md:top-6 h-fit">
           <div className="rounded-lg border p-4 space-y-2 bg-white">
-            {/* 2) Headline Rent fett + 3) Block ganz oben + negative rot */}
+            {/* Headline Rent-Block ganz oben */}
             <p className="mb-1">
               <strong className="text-lg">Headline Rent:</strong> <strong>{F(rent, 2)} €/sqm</strong>
             </p>
@@ -300,7 +309,7 @@ export default function App() {
               <div className="text-right"><Money value={ -totalUnforeseen } /></div>
             </div>
 
-            {/* 4) Total Fit Outs direkt darunter */}
+            {/* Total Fit Outs direkt darunter */}
             <p className="text-sm font-semibold text-red-500 mb-1">
               Total Fit Out Costs: {FCUR(totalFit)}
             </p>
@@ -310,9 +319,9 @@ export default function App() {
             <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 2)} €/sqm</b><Delta base={rent} val={ner2} /></p>
             <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b><Delta base={rent} val={ner3} /></p>
 
-            {/* 5–6) Charts: Fit-Outs schmal mit gedrehtem Label, NER breit; im NER nur Zahlen im Balken + rote Prozente mit Minus */}
+            {/* Charts */}
             <div className="mt-4 grid grid-cols-3 gap-4">
-              {/* Fit-Outs narrow */}
+              {/* Fit-Outs schmal, mit größerem, rotiertem Label */}
               <div className="h-60 border rounded p-2 col-span-1">
                 <div className="text-sm font-medium mb-1">Total Fit-Outs</div>
                 <ResponsiveContainer width="100%" height="100%">
@@ -328,7 +337,7 @@ export default function App() {
                 </ResponsiveContainer>
               </div>
 
-              {/* NER bars wide */}
+              {/* NER breit: Zahlen im Balken, %-Label exakt darüber */}
               <div className="h-60 border rounded p-2 col-span-2">
                 <div className="text-sm font-medium mb-1">NER vs Headline (€/sqm)</div>
                 <ResponsiveContainer width="100%" height="100%">
@@ -338,9 +347,7 @@ export default function App() {
                     <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
                     <ReferenceLine y={0} />
                     <Bar dataKey="sqm">
-                      {/* nur Zahlen im Balken */}
-                      <LabelList dataKey="sqm" position="insideTop" formatter={(v) => F(v, 2)} />
-                      {/* Prozente darüber – rot mit Minus (oder grün mit +) */}
+                      <LabelList dataKey="sqm" content={<BarNumberLabel />} />
                       <LabelList dataKey="pct" content={<PercentLabel />} />
                       {nerBars.map((e, i) => (
                         <Cell key={i} fill={e.color} />
@@ -351,7 +358,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Final NER ganz unten */}
+            {/* Final NER unten */}
             <p className="border-t pt-2 mt-6">
               4️⃣ <b>Final NER</b> (incl. all above + Unforeseen): <b>{F(ner4, 2)} €/sqm</b>
               <Delta base={rent} val={ner4} />
