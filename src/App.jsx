@@ -226,38 +226,35 @@ export default function App() {
   const totalUnforeseen = unforeseen;
 
   // Farben
-  const FIT_OUT_COLOR = "#c2410c"; // dunkles Orange
-  const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"]; // 4 Blautöne
+  const FIT_OUT_COLOR = "#c2410c"; // Orange
+  const HEADLINE_COLOR = "#065f46"; // dunkelgrün
+  const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"]; // Blautöne
 
   // Chart-Daten
   const chartFitOutData = [{ name: "Fit-Outs", eur: totalFit }];
+
+  // NER-Chart jetzt MIT Headline-Balken links
   const nerBars = [
-    { label: "NER 1", val: ner1 },
-    { label: "NER 2", val: ner2 },
-    { label: "NER 3", val: ner3 },
-    { label: "Final", val: ner4 },
-  ].map((d, i) => ({
-    name: d.label,
-    sqm: d.val,
-    pct: rent > 0 ? ((d.val - rent) / rent) * 100 : 0, // negativ = Abschlag
-    color: NER_COLORS[i],
-  }));
+    { label: "Headline", val: rent, pct: null, color: HEADLINE_COLOR },
+    { label: "NER 1", val: ner1, pct: rent > 0 ? ((ner1 - rent) / rent) * 100 : null, color: NER_COLORS[0] },
+    { label: "NER 2", val: ner2, pct: rent > 0 ? ((ner2 - rent) / rent) * 100 : null, color: NER_COLORS[1] },
+    { label: "NER 3", val: ner3, pct: rent > 0 ? ((ner3 - rent) / rent) * 100 : null, color: NER_COLORS[2] },
+    { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
+  ].map(d => ({ name: d.label, sqm: d.val, pct: d.pct, color: d.color }));
 
-  // PNG export
-  const resultsRef = useRef(null);  // whole card
-  const chartsRef = useRef(null);   // charts only
-
-  const downloadPNG = async (node, filename) => {
-    if (!node) return;
+  // PNG export (nur noch GANZE Karte, höhere Qualität)
+  const resultsRef = useRef(null);
+  const downloadPNG = async () => {
+    if (!resultsRef.current) return;
     try {
-      const dataUrl = await toPng(node, {
+      const dataUrl = await toPng(resultsRef.current, {
         cacheBust: true,
-        pixelRatio: 2,
+        pixelRatio: 3,              // schärferes PNG
         backgroundColor: "#ffffff",
       });
       const a = document.createElement("a");
       a.href = dataUrl;
-      a.download = filename;
+      a.download = "ner-results.png";
       a.click();
     } catch (e) {
       console.error("PNG export failed", e);
@@ -320,30 +317,17 @@ export default function App() {
         {/* RIGHT: Results */}
         <div className="md:sticky md:top-6 h-fit">
           <div ref={resultsRef} className="rounded-lg border p-4 space-y-2 bg-white">
-            {/* Export dropdown (oben rechts) */}
+            {/* Export button (oben rechts) */}
             <div className="flex justify-end">
-              <details className="relative">
-                <summary className="list-none cursor-pointer px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">
-                  Export
-                </summary>
-                <div className="absolute right-0 mt-1 w-56 border rounded bg-white shadow">
-                  <button
-                    className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm"
-                    onClick={() => downloadPNG(resultsRef.current, "ner-results.png")}
-                  >
-                    Export results (whole card)
-                  </button>
-                  <button
-                    className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm"
-                    onClick={() => downloadPNG(chartsRef.current, "ner-charts.png")}
-                  >
-                    Export charts only
-                  </button>
-                </div>
-              </details>
+              <button
+                onClick={downloadPNG}
+                className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm"
+              >
+                Export PNG
+              </button>
             </div>
 
-            {/* Headline Rent-Block ganz oben */}
+            {/* Headline Rent-Block */}
             <p className="mb-1">
               <strong className="text-lg">Headline Rent:</strong> <strong>{F(rent, 2)} €/sqm</strong>
             </p>
@@ -362,7 +346,7 @@ export default function App() {
               <div className="text-right"><Money value={ -totalUnforeseen } /></div>
             </div>
 
-            {/* Total Fit Outs direkt darunter */}
+            {/* Total Fit Outs */}
             <p className="text-sm font-semibold text-red-500 mb-1">
               Total Fit Out Costs: {FCUR(totalFit)}
             </p>
@@ -372,8 +356,8 @@ export default function App() {
             <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 2)} €/sqm</b><Delta base={rent} val={ner2} /></p>
             <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b><Delta base={rent} val={ner3} /></p>
 
-            {/* Charts area (ref for charts-only export) */}
-            <div ref={chartsRef} className="mt-4 grid grid-cols-3 gap-6">
+            {/* Charts */}
+            <div className="mt-4 grid grid-cols-3 gap-6">
               {/* Fit-Outs schmal, mit größerem, rotiertem Label */}
               <div className="h-60 border rounded p-2 col-span-1">
                 <div className="text-sm font-medium mb-1">Total Fit-Outs</div>
@@ -383,32 +367,33 @@ export default function App() {
                     <YAxis hide />
                     <Tooltip formatter={(v) => FCUR(v)} />
                     <ReferenceLine y={0} />
-                    <Bar dataKey="eur" fill={FIT_OUT_COLOR} barSize={24}>
+                    <Bar dataKey="eur" fill={FIT_OUT_COLOR} barSize={28}>
                       <LabelList content={<VerticalMoneyLabel />} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
 
-              {/* NER breit: Zahlen im Balken, %-Label exakt darüber */}
+              {/* NER + Headline breit */}
               <div className="h-60 border rounded p-2 col-span-2">
                 <div className="text-sm font-medium mb-1">NER vs Headline (€/sqm)</div>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={nerBars} barCategoryGap={28} barGap={6}>
+                  <BarChart data={nerBars} barCategoryGap={18} barGap={4}>
                     <XAxis dataKey="name" />
                     <YAxis hide />
                     <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
                     <ReferenceLine y={0} />
-                    <Bar dataKey="sqm">
+                    <Bar dataKey="sqm" /* breitere Balken */ barSize={36}>
+                      {/* Zahl im Balken */}
                       <LabelList dataKey="sqm" content={<BarNumberLabel />} />
+                      {/* Prozent über Balken (Headline hat pct=null → kein Label) */}
                       <LabelList dataKey="pct" content={<PercentLabel />} />
                       {nerBars.map((e, i) => (
                         <Cell
                           key={i}
                           fill={e.color}
-                          // roter Rahmen nur beim Final-Balken
-                          stroke={i === nerBars.length - 1 ? "#dc2626" : undefined}
-                          strokeWidth={i === nerBars.length - 1 ? 2 : undefined}
+                          stroke={e.name === "Final" ? "#dc2626" : undefined}
+                          strokeWidth={e.name === "Final" ? 2 : undefined}
                         />
                       ))}
                     </Bar>
