@@ -1,4 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  LabelList,
+  ReferenceLine,
+} from "recharts";
 
 /* ---------- utils ---------- */
 const clamp = (n, min = 0) => (Number.isFinite(n) ? Math.max(min, n) : 0);
@@ -94,7 +104,7 @@ function NumericField({
   );
 }
 
-/* ---------- app (two-column responsive layout) ---------- */
+/* ---------- app (two-column layout + charts) ---------- */
 export default function App() {
   const [f, setF] = useState({
     nla: "1000",
@@ -163,13 +173,33 @@ export default function App() {
   const totalFit =
     f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
 
-  const agentFees = agent * rent * gla;
+  const agentFees = agent * rent * gla; // EUR
   const denom = Math.max(1e-9, duration * gla);
 
+  // NERs
   const ner1 = gross / denom; // Rent frees only
   const ner2 = (gross - totalFit) / denom;
   const ner3 = (gross - totalFit - agentFees) / denom;
   const ner4 = (gross - totalFit - agentFees - unforeseen) / denom; // Final NER
+
+  // -------- absolute EUR breakdown over entire term --------
+  const totalHeadline = rent * gla * duration;
+  const totalRentFrees = rent * gla * rf;
+  const totalAgentFees = agentFees;
+  const totalUnforeseen = unforeseen;
+
+  // -------- chart data --------
+  const chartFitOutData = [{ name: "Fit-Outs", eur: totalFit }];
+  const nerBars = [
+    { label: "NER 1", val: ner1 },
+    { label: "NER 2", val: ner2 },
+    { label: "NER 3", val: ner3 },
+    { label: "Final", val: ner4 },
+  ].map((d) => ({
+    name: d.label,
+    sqm: d.val,
+    pct: rent > 0 ? ((d.val - rent) / rent) * 100 : 0, // negative means discount vs headline
+  }));
 
   return (
     <div className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md">
@@ -316,16 +346,37 @@ export default function App() {
         {/* RIGHT: Results (sticky on large screens) */}
         <div className="md:sticky md:top-6 h-fit">
           <div className="rounded-lg border p-4 space-y-2 bg-white">
+            {/* Total Fit-Out quick line */}
             <p className="text-sm text-red-500 font-semibold">
               Total Fit Out Costs: {FCUR(totalFit)}
             </p>
+
+            {/* Headline */}
             <p>
               <strong>Headline Rent:</strong> {F(rent, 2)} €/sqm
             </p>
 
+            {/* Absolute EUR breakdown */}
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-2 mt-1">
+              <div className="text-gray-600">Total Headline Rent</div>
+              <div className="text-right font-medium">{FCUR(totalHeadline)}</div>
+
+              <div className="text-gray-600">Total Rent Frees</div>
+              <div className="text-right font-medium">-{FCUR(totalRentFrees)}</div>
+
+              <div className="text-gray-600">Total Agent Fees</div>
+              <div className="text-right font-medium">-{FCUR(totalAgentFees)}</div>
+
+              <div className="text-gray-600">Unforeseen Costs</div>
+              <div className="text-right font-medium">-{FCUR(totalUnforeseen)}</div>
+            </div>
+
+            {/* NER lines */}
             <p>
               <span className="inline-flex items-center gap-2">
-                <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-blue-600 text-white text-xs font-bold">1</span>
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-blue-600 text-white text-xs font-bold">
+                  1
+                </span>
                 NER incl. Rent Frees:
               </span>{" "}
               <b>{F(ner1, 2)} €/sqm</b>
@@ -334,7 +385,9 @@ export default function App() {
 
             <p>
               <span className="inline-flex items-center gap-2">
-                <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-blue-600 text-white text-xs font-bold">2</span>
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-blue-600 text-white text-xs font-bold">
+                  2
+                </span>
                 incl. Rent Frees &amp; Fit-Outs:
               </span>{" "}
               <b>{F(ner2, 2)} €/sqm</b>
@@ -343,16 +396,91 @@ export default function App() {
 
             <p>
               <span className="inline-flex items-center gap-2">
-                <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-blue-600 text-white text-xs font-bold">3</span>
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-blue-600 text-white text-xs font-bold">
+                  3
+                </span>
                 incl. Rent Frees, Fit-Outs &amp; Agent Fees:
               </span>{" "}
               <b>{F(ner3, 2)} €/sqm</b>
               <Delta base={rent} val={ner3} />
             </p>
 
-            <p className="border-t pt-2">
+            {/* Charts row */}
+            <div className="mt-3 grid grid-cols-2 gap-4">
+              {/* Left: total fit-outs bar */}
+              <div className="h-40 border rounded p-2">
+                <div className="text-sm font-medium mb-1">Total Fit-Outs</div>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={chartFitOutData}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <XAxis dataKey="name" hide />
+                    <YAxis hide />
+                    <Tooltip
+                      formatter={(v) =>
+                        v.toLocaleString("en-US", {
+                          style: "currency",
+                          currency: "EUR",
+                        })
+                      }
+                    />
+                    <ReferenceLine y={0} />
+                    <Bar dataKey="eur">
+                      <LabelList
+                        dataKey="eur"
+                        position="top"
+                        formatter={(v) =>
+                          v.toLocaleString("en-US", {
+                            style: "currency",
+                            currency: "EUR",
+                          })
+                        }
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Right: NER €/sqm bars with % above */}
+              <div className="h-40 border rounded p-2">
+                <div className="text-sm font-medium mb-1">NER vs Headline (€/sqm)</div>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={nerBars}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <XAxis dataKey="name" />
+                    <YAxis hide />
+                    <Tooltip
+                      formatter={(v, n) =>
+                        n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`
+                      }
+                    />
+                    <ReferenceLine y={0} />
+                    <Bar dataKey="sqm">
+                      <LabelList
+                        dataKey="sqm"
+                        position="insideTop"
+                        formatter={(v) => `${F(v, 2)} €/sqm`}
+                      />
+                      <LabelList
+                        dataKey="pct"
+                        position="top"
+                        formatter={(v) => `${F(Math.abs(v), 2)}%`}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Final NER at the very bottom */}
+            <p className="border-t pt-2 mt-4">
               <span className="inline-flex items-center gap-2">
-                <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-blue-600 text-white text-xs font-bold">4</span>
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-blue-600 text-white text-xs font-bold">
+                  4
+                </span>
                 <b>Final NER</b> (incl. all above + Unforeseen):
               </span>{" "}
               <b>{F(ner4, 2)} €/sqm</b>
