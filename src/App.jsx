@@ -8,6 +8,7 @@ import {
   Tooltip,
   LabelList,
   ReferenceLine,
+  Cell, // <-- needed for per-bar colors
 } from "recharts";
 
 /* ---------- utils ---------- */
