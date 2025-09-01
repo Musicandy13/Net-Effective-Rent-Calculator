@@ -249,16 +249,26 @@ export default function App() {
   ].map(d => ({ name: d.label, sqm: d.val, pct: d.pct, color: d.color }));
 
   /* export refs */
-  const pageRef = useRef(null);           // entire page (inputs + results)
+  const pageRef = useRef(null);           // entire page
   const resultsCardRef = useRef(null);    // card incl. buttons
-  const resultsContentRef = useRef(null); // content only (no buttons)
+  const resultsContentRef = useRef(null); // content only
 
-  /* generic export */
+  /* Full Export (fix: anti clipping) */
   const exportNode = async (node, filename) => {
     if (!node) return;
-    const w = node.scrollWidth;
-    const h = node.scrollHeight;
     try {
+      setIsExporting(true);
+
+      await new Promise(r =>
+        requestAnimationFrame(() => requestAnimationFrame(r))
+      );
+
+      const rect = node.getBoundingClientRect();
+      const pad = 24;
+
+      const w = Math.ceil(rect.width) + pad * 2;
+      const h = Math.ceil(rect.height) + pad * 2;
+
       const dataUrl = await toPng(node, {
         cacheBust: true,
         pixelRatio: 3,
@@ -267,27 +277,38 @@ export default function App() {
         height: h,
         canvasWidth: w,
         canvasHeight: h,
+        style: {
+          padding: `${pad}px`,
+          margin: "0",
+          overflow: "visible",
+          boxShadow: "none",
+          borderRadius: "0",
+        },
       });
+
       const a = document.createElement("a");
       a.href = dataUrl;
       a.download = filename;
       a.click();
     } catch (e) {
       console.error("PNG export failed", e);
+    } finally {
+      setIsExporting(false);
     }
   };
 
-  /* results export – anti-clipping */
+  /* Results Export */
   const exportResultsPNG = async () => {
     if (!resultsContentRef.current) return;
     try {
       setIsExporting(true);
-      // zwei Frames warten, damit Recharts-Layout fertig ist
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      await new Promise(r =>
+        requestAnimationFrame(() => requestAnimationFrame(r))
+      );
 
       const node = resultsContentRef.current;
       const rect = node.getBoundingClientRect();
-      const pad = 24; // Sicherheitsrand
+      const pad = 24;
 
       const w = Math.ceil(rect.width) + pad * 2;
       const h = Math.ceil(rect.height) + pad * 2;
@@ -330,7 +351,7 @@ export default function App() {
         {/* Titel */}
         <h2 className="text-2xl font-bold mb-2 text-center">Net Effective Rent Calculator</h2>
 
-        {/* Ein Tenant-Feld (ohne Titel) */}
+        {/* Tenant input */}
         <div className="mb-4 flex justify-center">
           <div className="w-full md:w-1/2">
             <input
@@ -394,109 +415,4 @@ export default function App() {
           {/* RIGHT: Results */}
           <div className="md:sticky md:top-6 h-fit">
             <div ref={resultsCardRef} className="rounded-lg border p-4 space-y-2 bg-white">
-              {/* Export-Buttons (werden NICHT in results-content exportiert) */}
-              <div className="flex gap-2 justify-end">
-                <button
-                  onClick={exportResultsPNG}
-                  className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm"
-                >
-                  Export Results PNG
-                </button>
-                <button
-                  onClick={() => exportNode(pageRef.current, "ner-full.png")}
-                  className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm"
-                >
-                  Export Full PNG
-                </button>
-              </div>
-
-              {/* Inhalte für Export */}
-              <div ref={resultsContentRef}>
-                {f.tenant.trim() && (
-                  <div className="mb-1">
-                    <span className="text-xl font-bold">
-                      Tenant: <u>{f.tenant.trim()}</u>
-                    </span>
-                  </div>
-                )}
-
-                <p className="mb-1">
-                  <strong className="text-lg">Headline Rent:</strong> <strong>{F(rent, 2)} €/sqm</strong>
-                </p>
-
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
-                  <div>Total Headline Rent</div>
-                  <div className="text-right"><Money value={ totalHeadline } /></div>
-
-                  <div>Total Rent Frees</div>
-                  <div className="text-right"><Money value={ -totalRentFrees } /></div>
-
-                  <div>Total Agent Fees</div>
-                  <div className="text-right"><Money value={ -totalAgentFees } /></div>
-
-                  <div>Unforeseen Costs</div>
-                  <div className="text-right"><Money value={ -totalUnforeseen } /></div>
-                </div>
-
-                <p className="text-sm font-semibold text-red-500 mb-1">
-                  Total Fit Out Costs: {FCUR(totalFit)}
-                </p>
-
-                <p>1️⃣ NER incl. Rent Frees: <b>{F(ner1, 2)} €/sqm</b><Delta base={rent} val={ner1} /></p>
-                <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 2)} €/sqm</b><Delta base={rent} val={ner2} /></p>
-                <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b><Delta base={rent} val={ner3} /></p>
-
-                {/* Charts */}
-                <div className="mt-4 grid grid-cols-3 gap-6">
-                  <div className="h-60 border rounded p-2 col-span-1">
-                    <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartFitOutData}>
-                        <XAxis dataKey="name" hide />
-                        <YAxis hide />
-                        <Tooltip formatter={(v) => FCUR0(v)} />
-                        <ReferenceLine y={0} />
-                        <Bar dataKey="eur" fill={FIT_OUT_COLOR} barSize={40} isAnimationActive={!isExporting}>
-                          <LabelList content={<VerticalMoneyLabel0 />} />
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  <div className="h-60 border rounded p-2 col-span-2">
-                    <div className="text-sm font-bold text-center mb-1">NER vs Headline (€/sqm)</div>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={nerBars} barCategoryGap={18} barGap={4}>
-                        <XAxis dataKey="name" />
-                        <YAxis hide />
-                        <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
-                        <ReferenceLine y={0} />
-                        <Bar dataKey="sqm" barSize={36} isAnimationActive={!isExporting}>
-                          <LabelList dataKey="sqm" content={<BarNumberLabel />} />
-                          <LabelList dataKey="pct" content={<PercentLabel />} />
-                          {nerBars.map((e, i) => (
-                            <Cell
-                              key={i}
-                              fill={e.color}
-                              stroke={e.name === "Final" ? "#dc2626" : undefined}
-                              strokeWidth={e.name === "Final" ? 2 : undefined}
-                            />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <p className="border-t pt-2 mt-10">
-                  4️⃣ <b>Final NER</b> (incl. all above + Unforeseen): <b>{F(ner4, 2)} €/sqm</b>
-                  <Delta base={rent} val={ner4} />
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+              {/*
