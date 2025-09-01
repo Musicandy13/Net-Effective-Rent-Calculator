@@ -39,18 +39,14 @@ const FCUR0 = (n) =>
     maximumFractionDigits: 0,
   });
 
-/* Geldwert mit Farbe je nach Vorzeichen */
+/* ---------- helpers ---------- */
 function Money({ value }) {
   const cls = value < 0 ? "text-red-600 font-medium" : "text-gray-900 font-medium";
   return <span className={cls}>{FCUR(value)}</span>;
 }
-
-/* Delta vs Headline */
 function Delta({ base, val }) {
   const pct = base > 0 ? ((val - base) / base) * 100 : 0;
-  const up = pct > 0;
-  const down = pct < 0;
-  const sign = pct > 0 ? "+" : "";
+  const up = pct > 0, down = pct < 0, sign = pct > 0 ? "+" : "";
   return (
     <span className={`${down ? "text-red-600" : up ? "text-green-600" : "text-gray-500"} font-medium ml-2`}>
       {down ? "▼" : up ? "▲" : "■"} {sign}{F(pct, 2)}%
@@ -58,17 +54,10 @@ function Delta({ base, val }) {
   );
 }
 
-/* ---------- Numeric Input ---------- */
+/* ---------- inputs ---------- */
 function NumericField({
-  label,
-  value,
-  onChange,
-  format = "2dec",
-  step = 1,
-  min = 0,
-  readOnly = false,
-  onCommit,
-  suffix,
+  label, value, onChange, format = "2dec", step = 1, min = 0,
+  readOnly = false, onCommit, suffix,
 }) {
   const [focus, setFocus] = useState(false);
   const num = P(value);
@@ -104,7 +93,7 @@ function NumericField({
   );
 }
 
-/* ---------- Custom Chart Labels ---------- */
+/* ---------- chart labels ---------- */
 const PercentLabel = ({ x, y, width, value }) => {
   if (value == null) return null;
   const cx = x + width / 2;
@@ -116,41 +105,21 @@ const PercentLabel = ({ x, y, width, value }) => {
     </text>
   );
 };
-
 const BarNumberLabel = ({ x, y, width, height, value }) => {
   if (value == null) return null;
   const cx = x + width / 2;
   const cy = y + height / 2;
   return (
-    <text
-      x={cx}
-      y={cy}
-      textAnchor="middle"
-      dominantBaseline="middle"
-      fill="#ffffff"
-      fontSize={12}
-      fontWeight="800"
-    >
+    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" fill="#ffffff" fontSize={12} fontWeight="800">
       {F(value, 2)}
     </text>
   );
 };
-
-/* Fit-Outs: vertikal, ohne Nachkommastellen */
 const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   if (value == null) return null;
-  const cx = x + width / 2;
-  const cy = y + height / 2;
+  const cx = x + width / 2, cy = y + height / 2;
   return (
-    <text
-      x={cx}
-      y={cy}
-      transform={`rotate(-90, ${cx}, ${cy})`}
-      textAnchor="middle"
-      fill="#ffffff"
-      fontSize={16}
-      fontWeight="800"
-    >
+    <text x={cx} y={cy} transform={`rotate(-90, ${cx}, ${cy})`} textAnchor="middle" fill="#ffffff" fontSize={16} fontWeight="800">
       {FCUR0(value)}
     </text>
   );
@@ -173,7 +142,6 @@ export default function App() {
     unforeseen: "0",
   });
   const S = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
-
   const [isExporting, setIsExporting] = useState(false);
 
   /* parsed */
@@ -217,9 +185,7 @@ export default function App() {
     }
   }, [f.fitMode, f.nla, f.addon, f.fitPerNLA, f.fitPerGLA, f.fitTot]);
 
-  const totalFit =
-    f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
-
+  const totalFit = f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
   const agentFees = agent * rent * gla;
   const denom = Math.max(1e-9, duration * gla);
 
@@ -233,39 +199,34 @@ export default function App() {
   const totalAgentFees = agentFees;
   const totalUnforeseen = unforeseen;
 
-  /* colors */
+  /* charts */
   const FIT_OUT_COLOR = "#c2410c";
   const HEADLINE_COLOR = "#065f46";
   const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"];
 
-  /* chart data */
   const chartFitOutData = [{ name: "Fit-Outs", eur: totalFit }];
   const nerBars = [
     { label: "Headline", val: rent, pct: null, color: HEADLINE_COLOR },
     { label: "NER 1", val: ner1, pct: rent > 0 ? ((ner1 - rent) / rent) * 100 : null, color: NER_COLORS[0] },
     { label: "NER 2", val: ner2, pct: rent > 0 ? ((ner2 - rent) / rent) * 100 : null, color: NER_COLORS[1] },
     { label: "NER 3", val: ner3, pct: rent > 0 ? ((ner3 - rent) / rent) * 100 : null, color: NER_COLORS[2] },
-    { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
-  ].map(d => ({ name: d.label, sqm: d.val, pct: d.pct, color: d.color }));
+    { label: "Final", val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
+  ].map((d) => ({ name: d.label, sqm: d.val, pct: d.pct, color: d.color }));
 
   /* export refs */
   const pageRef = useRef(null);           // entire page
   const resultsCardRef = useRef(null);    // card incl. buttons
-  const resultsContentRef = useRef(null); // content only
+  const resultsContentRef = useRef(null); // content only (no buttons)
 
-  /* Full Export (fix: anti clipping) */
+  /* ---------- EXPORTS (anti-clipping) ---------- */
   const exportNode = async (node, filename) => {
     if (!node) return;
     try {
       setIsExporting(true);
-
-      await new Promise(r =>
-        requestAnimationFrame(() => requestAnimationFrame(r))
-      );
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
       const rect = node.getBoundingClientRect();
       const pad = 24;
-
       const w = Math.ceil(rect.width) + pad * 2;
       const h = Math.ceil(rect.height) + pad * 2;
 
@@ -285,7 +246,6 @@ export default function App() {
           borderRadius: "0",
         },
       });
-
       const a = document.createElement("a");
       a.href = dataUrl;
       a.download = filename;
@@ -297,19 +257,15 @@ export default function App() {
     }
   };
 
-  /* Results Export */
   const exportResultsPNG = async () => {
     if (!resultsContentRef.current) return;
     try {
       setIsExporting(true);
-      await new Promise(r =>
-        requestAnimationFrame(() => requestAnimationFrame(r))
-      );
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
       const node = resultsContentRef.current;
       const rect = node.getBoundingClientRect();
       const pad = 24;
-
       const w = Math.ceil(rect.width) + pad * 2;
       const h = Math.ceil(rect.height) + pad * 2;
 
@@ -329,7 +285,6 @@ export default function App() {
           borderRadius: "0",
         },
       });
-
       const a = document.createElement("a");
       a.href = dataUrl;
       a.download = "ner-results.png";
@@ -341,6 +296,7 @@ export default function App() {
     }
   };
 
+  /* ---------- UI ---------- */
   return (
     <div style={{ backgroundColor: "#F3FCC4" }}>
       <div
@@ -348,10 +304,9 @@ export default function App() {
         className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md"
         style={{ boxShadow: "0 10px 25px rgba(0,0,0,.08)" }}
       >
-        {/* Titel */}
         <h2 className="text-2xl font-bold mb-2 text-center">Net Effective Rent Calculator</h2>
 
-        {/* Tenant input */}
+        {/* Tenant */}
         <div className="mb-4 flex justify-center">
           <div className="w-full md:w-1/2">
             <input
@@ -415,4 +370,96 @@ export default function App() {
           {/* RIGHT: Results */}
           <div className="md:sticky md:top-6 h-fit">
             <div ref={resultsCardRef} className="rounded-lg border p-4 space-y-2 bg-white">
-              {/*
+              {/* Export-Buttons */}
+              <div className="flex gap-2 justify-end">
+                <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">
+                  Export Results PNG
+                </button>
+                <button onClick={() => exportNode(pageRef.current, "ner-full.png")} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">
+                  Export Full PNG
+                </button>
+              </div>
+
+              {/* Inhalte für Export (ohne Buttons) */}
+              <div ref={resultsContentRef}>
+                {f.tenant.trim() && (
+                  <div className="mb-1">
+                    <span className="text-xl font-bold">Tenant: <u>{f.tenant.trim()}</u></span>
+                  </div>
+                )}
+
+                <p className="mb-1">
+                  <strong className="text-lg">Headline Rent:</strong> <strong>{F(rent, 2)} €/sqm</strong>
+                </p>
+
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
+                  <div>Total Headline Rent</div><div className="text-right"><Money value={totalHeadline} /></div>
+                  <div>Total Rent Frees</div><div className="text-right"><Money value={-totalRentFrees} /></div>
+                  <div>Total Agent Fees</div><div className="text-right"><Money value={-totalAgentFees} /></div>
+                  <div>Unforeseen Costs</div><div className="text-right"><Money value={-totalUnforeseen} /></div>
+                </div>
+
+                <p className="text-sm font-semibold text-red-500 mb-1">
+                  Total Fit Out Costs: {FCUR(totalFit)}
+                </p>
+
+                <p>1️⃣ NER incl. Rent Frees: <b>{F(ner1, 2)} €/sqm</b><Delta base={rent} val={ner1} /></p>
+                <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 2)} €/sqm</b><Delta base={rent} val={ner2} /></p>
+                <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b><Delta base={rent} val={ner3} /></p>
+
+                {/* Charts */}
+                <div className="mt-4 grid grid-cols-3 gap-6">
+                  {/* Fit-Outs */}
+                  <div className="h-60 border rounded p-2 col-span-1">
+                    <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartFitOutData}>
+                        <XAxis dataKey="name" hide />
+                        <YAxis hide />
+                        <Tooltip formatter={(v) => FCUR0(v)} />
+                        <ReferenceLine y={0} />
+                        <Bar dataKey="eur" fill={FIT_OUT_COLOR} barSize={40} isAnimationActive={!isExporting}>
+                          <LabelList content={<VerticalMoneyLabel0 />} />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* NER vs Headline */}
+                  <div className="h-60 border rounded p-2 col-span-2">
+                    <div className="text-sm font-bold text-center mb-1">NER vs Headline (€/sqm)</div>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={nerBars} barCategoryGap={18} barGap={4}>
+                        <XAxis dataKey="name" />
+                        <YAxis hide />
+                        <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
+                        <ReferenceLine y={0} />
+                        <Bar dataKey="sqm" barSize={36} isAnimationActive={!isExporting}>
+                          <LabelList dataKey="sqm" content={<BarNumberLabel />} />
+                          <LabelList dataKey="pct" content={<PercentLabel />} />
+                          {nerBars.map((e, i) => (
+                            <Cell
+                              key={i}
+                              fill={e.color}
+                              stroke={e.name === "Final" ? "#dc2626" : undefined}
+                              strokeWidth={e.name === "Final" ? 2 : undefined}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <p className="border-t pt-2 mt-10">
+                  4️⃣ <b>Final NER</b> (incl. all above + Unforeseen): <b>{F(ner4, 2)} €/sqm</b>
+                  <Delta base={rent} val={ner4} />
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
