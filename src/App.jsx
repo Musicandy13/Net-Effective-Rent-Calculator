@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -8,8 +8,9 @@ import {
   Tooltip,
   LabelList,
   ReferenceLine,
-  Cell, // für individuelle Balkenfarben
+  Cell,
 } from "recharts";
+import { toPng } from "html-to-image";
 
 /* ---------- utils ---------- */
 const clamp = (n, min = 0) => (Number.isFinite(n) ? Math.max(min, n) : 0);
@@ -101,7 +102,7 @@ function NumericField({
 const PercentLabel = ({ x, y, width, value }) => {
   if (value == null) return null;
   const cx = x + width / 2;
-  const fill = value < 0 ? "#dc2626" : "#16a34a"; // rot / grün
+  const fill = value < 0 ? "#dc2626" : "#16a34a";
   const sign = value > 0 ? "+" : "";
   return (
     <text x={cx} y={y - 6} textAnchor="middle" fill={fill} fontSize={12} fontWeight="700">
@@ -109,13 +110,21 @@ const PercentLabel = ({ x, y, width, value }) => {
     </text>
   );
 };
-// Zahlen im NER-Balken (weiß, zentriert)
+// Zahlen im NER-Balken: horizontal & vertikal zentriert, fett
 const BarNumberLabel = ({ x, y, width, height, value }) => {
   if (value == null) return null;
   const cx = x + width / 2;
-  const cy = y + Math.max(14, Math.min(height - 4, 18)); // gut lesbare vertikale Position
+  const cy = y + height / 2;
   return (
-    <text x={cx} y={cy} textAnchor="middle" fill="#ffffff" fontSize={12} fontWeight="700">
+    <text
+      x={cx}
+      y={cy}
+      textAnchor="middle"
+      dominantBaseline="middle"
+      fill="#ffffff"
+      fontSize={12}
+      fontWeight="800"
+    >
       {F(value, 2)}
     </text>
   );
@@ -234,6 +243,25 @@ export default function App() {
     color: NER_COLORS[i],
   }));
 
+  // PNG export for charts (both charts as one image)
+  const chartsRef = useRef(null);
+  const downloadPNG = async () => {
+    if (!chartsRef.current) return;
+    try {
+      const dataUrl = await toPng(chartsRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+      });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = "ner-charts.png";
+      a.click();
+    } catch (e) {
+      console.error("PNG export failed", e);
+    }
+  };
+
   return (
     <div className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md">
       {/* Titel zentriert */}
@@ -319,8 +347,8 @@ export default function App() {
             <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 2)} €/sqm</b><Delta base={rent} val={ner2} /></p>
             <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b><Delta base={rent} val={ner3} /></p>
 
-            {/* Charts */}
-            <div className="mt-4 grid grid-cols-3 gap-4">
+            {/* Charts (exportable area) */}
+            <div ref={chartsRef} className="mt-4 grid grid-cols-3 gap-4">
               {/* Fit-Outs schmal, mit größerem, rotiertem Label */}
               <div className="h-60 border rounded p-2 col-span-1">
                 <div className="text-sm font-medium mb-1">Total Fit-Outs</div>
@@ -350,7 +378,13 @@ export default function App() {
                       <LabelList dataKey="sqm" content={<BarNumberLabel />} />
                       <LabelList dataKey="pct" content={<PercentLabel />} />
                       {nerBars.map((e, i) => (
-                        <Cell key={i} fill={e.color} />
+                        <Cell
+                          key={i}
+                          fill={e.color}
+                          // 2) Final-Bar rot umranden
+                          stroke={i === nerBars.length - 1 ? "#dc2626" : undefined}
+                          strokeWidth={i === nerBars.length - 1 ? 2 : undefined}
+                        />
                       ))}
                     </Bar>
                   </BarChart>
@@ -358,8 +392,18 @@ export default function App() {
               </div>
             </div>
 
-            {/* Final NER unten */}
-            <p className="border-t pt-2 mt-6">
+            {/* Download button */}
+            <div className="flex justify-end mt-3">
+              <button
+                onClick={downloadPNG}
+                className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm"
+              >
+                Download charts as PNG
+              </button>
+            </div>
+
+            {/* Final NER noch weiter nach unten */}
+            <p className="border-t pt-2 mt-10">
               4️⃣ <b>Final NER</b> (incl. all above + Unforeseen): <b>{F(ner4, 2)} €/sqm</b>
               <Delta base={rent} val={ner4} />
             </p>
