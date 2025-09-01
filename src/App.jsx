@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -7,7 +7,6 @@ import {
   YAxis,
   Tooltip,
   LabelList,
-  ReferenceLine,
   Cell,
 } from "recharts";
 import { toPng } from "html-to-image";
@@ -30,49 +29,32 @@ const FCUR = (n) =>
   (Number.isFinite(n) ? n : 0).toLocaleString("en-US", {
     style: "currency",
     currency: "EUR",
-  });
-const FCUR0 = (n) =>
-  (Number.isFinite(n) ? n : 0).toLocaleString("en-US", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 0, // Fit-Out besser ohne Kommastellen
   });
 
-/* Geldwert mit Farbe je nach Vorzeichen */
-function Money({ value }) {
-  const cls = value < 0 ? "text-red-600 font-medium" : "text-gray-900 font-medium";
-  return <span className={cls}>{FCUR(value)}</span>;
-}
-
-/* Delta vs Headline */
+/* ---------- delta badge ---------- */
 function Delta({ base, val }) {
   const pct = base > 0 ? ((val - base) / base) * 100 : 0;
-  const up = pct > 0;
-  const down = pct < 0;
-  const sign = pct > 0 ? "+" : "";
+  const rounded = Math.abs(pct) < 0.005 ? 0 : pct;
+  const down = rounded < 0;
   return (
-    <span className={`${down ? "text-red-600" : up ? "text-green-600" : "text-gray-500"} font-medium ml-2`}>
-      {down ? "▼" : up ? "▲" : "■"} {sign}{F(pct, 2)}%
+    <span className={`${down ? "text-red-600" : "text-green-600"} font-medium ml-2`}>
+      {down ? "▼" : "▲"} {F(Math.abs(rounded), 2)}%
     </span>
   );
 }
 
-/* ---------- Numeric Input ---------- */
-function NumericField({
-  label,
-  value,
-  onChange,
-  format = "2dec",
-  step = 1,
-  min = 0,
-  readOnly = false,
-  onCommit,
-  suffix,
-}) {
+/* ---------- numeric input ---------- */
+function NumericField({ label, value, onChange, format = "2dec", step = 1, min = 0, readOnly = false, suffix }) {
   const [focus, setFocus] = useState(false);
   const num = P(value);
-  const show = focus ? value : format === "int" ? F(num, 0) : format === "1dec" ? F(num, 1) : F(num, 2);
+  const show = focus
+    ? value
+    : format === "int"
+    ? F(num, 0)
+    : format === "1dec"
+    ? F(num, 1)
+    : F(num, 2);
   return (
     <label className="block">
       <span className="text-gray-700">{label}</span>
@@ -89,7 +71,6 @@ function NumericField({
             setFocus(false);
             const n = clamp(P(e.target.value), min);
             onChange(String(n));
-            onCommit?.(n);
           }}
           onChange={(e) => onChange(e.target.value.replace(/[^\d.,-]/g, ""))}
           className={`mt-1 block w-full border rounded-md p-2 pr-16 ${readOnly ? "bg-gray-100 text-gray-600" : ""}`}
@@ -104,59 +85,24 @@ function NumericField({
   );
 }
 
-/* ---------- Custom Chart Labels ---------- */
-const PercentLabel = ({ x, y, width, value }) => {
-  if (value == null) return null;
-  const cx = x + width / 2;
-  const fill = value < 0 ? "#dc2626" : "#16a34a";
-  const sign = value > 0 ? "+" : "";
-  return (
-    <text x={cx} y={y - 6} textAnchor="middle" fill={fill} fontSize={12} fontWeight="700">
-      {sign}{F(value, 2)}%
-    </text>
-  );
-};
+/* ---------- chart labels ---------- */
+const VerticalMoneyLabel = ({ x, y, value }) => (
+  <text x={x + 20} y={y + 10} fill="white" fontWeight="bold" transform={`rotate(-90, ${x + 20}, ${y + 10})`}>
+    {FCUR(value)}
+  </text>
+);
+const BarNumberLabel = ({ x, y, width, height, value }) => (
+  <text x={x + width / 2} y={y + height / 2} fill="white" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">
+    {F(value, 2)}
+  </text>
+);
+const PercentLabel = ({ x, width, value }) => (
+  <text x={x + width / 2} y={20} fill="red" fontWeight="bold" textAnchor="middle">
+    {F(value, 2)}%
+  </text>
+);
 
-const BarNumberLabel = ({ x, y, width, height, value }) => {
-  if (value == null) return null;
-  const cx = x + width / 2;
-  const cy = y + height / 2;
-  return (
-    <text
-      x={cx}
-      y={cy}
-      textAnchor="middle"
-      dominantBaseline="middle"
-      fill="#ffffff"
-      fontSize={12}
-      fontWeight="800"
-    >
-      {F(value, 2)}
-    </text>
-  );
-};
-
-/* Fit-Outs: vertikal, ohne Nachkommastellen */
-const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
-  if (value == null) return null;
-  const cx = x + width / 2;
-  const cy = y + height / 2;
-  return (
-    <text
-      x={cx}
-      y={cy}
-      transform={`rotate(-90, ${cx}, ${cy})`}
-      textAnchor="middle"
-      fill="#ffffff"
-      fontSize={16}
-      fontWeight="800"
-    >
-      {FCUR0(value)}
-    </text>
-  );
-};
-
-/* ---------- App ---------- */
+/* ---------- app ---------- */
 export default function App() {
   const [f, setF] = useState({
     tenant: "",
@@ -172,11 +118,9 @@ export default function App() {
     fitTot: "150000.00",
     unforeseen: "0",
   });
+  const [isExporting, setIsExporting] = useState(false);
   const S = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
 
-  const [isExporting, setIsExporting] = useState(false);
-
-  /* parsed */
   const nla = clamp(P(f.nla));
   const addon = clamp(P(f.addon));
   const rent = clamp(P(f.rent));
@@ -184,8 +128,6 @@ export default function App() {
   const rf = clamp(P(f.rf));
   const agent = clamp(P(f.agent));
   const unforeseen = clamp(P(f.unforeseen));
-
-  /* derived */
   const gla = useMemo(() => nla * (1 + addon / 100), [nla, addon]);
   const months = Math.max(0, duration - rf);
   const gross = rent * gla * months;
@@ -194,7 +136,6 @@ export default function App() {
   const perGLA = clamp(P(f.fitPerGLA));
   const tot = clamp(P(f.fitTot));
 
-  /* sync fit-outs */
   useEffect(() => {
     const nNLA = clamp(P(f.fitPerNLA));
     const nGLA = clamp(P(f.fitPerGLA));
@@ -202,27 +143,24 @@ export default function App() {
     if (f.fitMode === "perNLA") {
       const t = nNLA * nla;
       const g = gla > 0 ? t / gla : 0;
-      if (Math.abs(t - nTot) > 1e-9) S("fitTot")(String(t));
-      if (Math.abs(g - nGLA) > 1e-9) S("fitPerGLA")(String(g));
+      S("fitTot")(String(t));
+      S("fitPerGLA")(String(g));
     } else if (f.fitMode === "perGLA") {
       const t = nGLA * gla;
       const n = nla > 0 ? t / nla : 0;
-      if (Math.abs(t - nTot) > 1e-9) S("fitTot")(String(t));
-      if (Math.abs(n - nNLA) > 1e-9) S("fitPerNLA")(String(n));
+      S("fitTot")(String(t));
+      S("fitPerNLA")(String(n));
     } else {
       const n = nla > 0 ? nTot / nla : 0;
       const g = gla > 0 ? nTot / gla : 0;
-      if (Math.abs(n - nNLA) > 1e-9) S("fitPerNLA")(String(n));
-      if (Math.abs(g - nGLA) > 1e-9) S("fitPerGLA")(String(g));
+      S("fitPerNLA")(String(n));
+      S("fitPerGLA")(String(g));
     }
   }, [f.fitMode, f.nla, f.addon, f.fitPerNLA, f.fitPerGLA, f.fitTot]);
 
-  const totalFit =
-    f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
-
+  const totalFit = f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
   const agentFees = agent * rent * gla;
   const denom = Math.max(1e-9, duration * gla);
-
   const ner1 = gross / denom;
   const ner2 = (gross - totalFit) / denom;
   const ner3 = (gross - totalFit - agentFees) / denom;
@@ -233,65 +171,35 @@ export default function App() {
   const totalAgentFees = agentFees;
   const totalUnforeseen = unforeseen;
 
-  /* colors */
+  // Farben
   const FIT_OUT_COLOR = "#c2410c";
-  const HEADLINE_COLOR = "#065f46";
   const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"];
-
-  /* chart data */
   const chartFitOutData = [{ name: "Fit-Outs", eur: totalFit }];
   const nerBars = [
-    { label: "Headline", val: rent, pct: null, color: HEADLINE_COLOR },
-    { label: "NER 1", val: ner1, pct: rent > 0 ? ((ner1 - rent) / rent) * 100 : null, color: NER_COLORS[0] },
-    { label: "NER 2", val: ner2, pct: rent > 0 ? ((ner2 - rent) / rent) * 100 : null, color: NER_COLORS[1] },
-    { label: "NER 3", val: ner3, pct: rent > 0 ? ((ner3 - rent) / rent) * 100 : null, color: NER_COLORS[2] },
-    { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
-  ].map(d => ({ name: d.label, sqm: d.val, pct: d.pct, color: d.color }));
+    { label: "Headline", val: rent },
+    { label: "NER 1", val: ner1 },
+    { label: "NER 2", val: ner2 },
+    { label: "NER 3", val: ner3 },
+    { label: "Final", val: ner4 },
+  ].map((d, i) => ({
+    name: d.label,
+    sqm: d.val,
+    pct: rent > 0 ? ((d.val - rent) / rent) * 100 : 0,
+    color: i === 0 ? "darkgreen" : NER_COLORS[i - 1],
+  }));
 
-  /* export refs */
-  const pageRef = useRef(null);           // entire page (inputs + results)
-  const resultsCardRef = useRef(null);    // card incl. buttons
-  const resultsContentRef = useRef(null); // content only (no buttons)
+  const resultsContentRef = useRef(null);
 
-  /* generic export */
-  const exportNode = async (node, filename) => {
-    if (!node) return;
-    const w = node.scrollWidth;
-    const h = node.scrollHeight;
-    try {
-      const dataUrl = await toPng(node, {
-        cacheBust: true,
-        pixelRatio: 3,
-        backgroundColor: "#ffffff",
-        width: w,
-        height: h,
-        canvasWidth: w,
-        canvasHeight: h,
-      });
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = filename;
-      a.click();
-    } catch (e) {
-      console.error("PNG export failed", e);
-    }
-  };
-
-  /* results export – anti-clipping */
   const exportResultsPNG = async () => {
     if (!resultsContentRef.current) return;
     try {
       setIsExporting(true);
-      // zwei Frames warten, damit Recharts-Layout fertig ist
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       const node = resultsContentRef.current;
       const rect = node.getBoundingClientRect();
-      const pad = 24; // Sicherheitsrand
-
+      const pad = 24;
       const w = Math.ceil(rect.width) + pad * 2;
       const h = Math.ceil(rect.height) + pad * 2;
-
       const dataUrl = await toPng(node, {
         cacheBust: true,
         pixelRatio: 3,
@@ -300,201 +208,118 @@ export default function App() {
         height: h,
         canvasWidth: w,
         canvasHeight: h,
-        style: {
-          padding: `${pad}px`,
-          margin: "0",
-          overflow: "visible",
-          boxShadow: "none",
-          borderRadius: "0",
-        },
+        style: { padding: `${pad}px`, margin: "0", overflow: "visible", boxShadow: "none", borderRadius: "0" },
       });
-
       const a = document.createElement("a");
       a.href = dataUrl;
       a.download = "ner-results.png";
       a.click();
-    } catch (e) {
-      console.error("PNG export failed", e);
     } finally {
       setIsExporting(false);
     }
   };
 
   return (
-    <div style={{ backgroundColor: "#F3FCC4" }}>
-      <div
-        ref={pageRef}
-        className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md"
-        style={{ boxShadow: "0 10px 25px rgba(0,0,0,.08)" }}
-      >
-        {/* Titel */}
-        <h2 className="text-2xl font-bold mb-2 text-center">Net Effective Rent Calculator</h2>
-
-        {/* Ein Tenant-Feld (ohne Titel) */}
-        <div className="mb-4 flex justify-center">
-          <div className="w-full md:w-1/2">
-            <input
-              type="text"
-              value={f.tenant}
-              onChange={(e) => S("tenant")(e.target.value)}
-              placeholder="Tenant"
-              className="mt-1 block w-full border rounded-md p-2 text-center"
-            />
-          </div>
-        </div>
-
+    <div className="min-h-screen bg-white py-6"> {/* GANZER Hintergrund weiß */}
+      <div className="p-6 max-w-6xl mx-auto bg-[#F3FCC4] rounded-xl shadow-md"> {/* Innen Box Lemongras */}
+        <h2 className="text-2xl font-bold mb-4 text-center">Net Effective Rent Calculator</h2>
+        <input
+          type="text"
+          placeholder="Tenant"
+          value={f.tenant}
+          onChange={(e) => S("tenant")(e.target.value)}
+          className="block mx-auto mb-4 border rounded-md p-2 w-64 text-center"
+        />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* LEFT: Inputs */}
+          {/* LEFT Inputs */}
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <NumericField label="NLA (sqm)" value={f.nla} onChange={S("nla")} />
               <NumericField label="Add-On (%)" value={f.addon} onChange={S("addon")} />
               <label className="block">
                 <span className="text-gray-700">GLA (sqm)</span>
-                <input
-                  readOnly
-                  value={F(gla, 2)}
-                  className="mt-1 block w-full border rounded-md p-2 bg-gray-100 text-gray-600"
-                />
+                <input readOnly value={F(gla, 2)} className="mt-1 block w-full border rounded-md p-2 bg-gray-100 text-gray-600" />
               </label>
               <NumericField label="Headline Rent €/sqm" value={f.rent} onChange={S("rent")} />
               <NumericField label="Lease Term (months)" value={f.duration} onChange={S("duration")} format="int" />
               <NumericField label="Rent-Free (months)" value={f.rf} onChange={S("rf")} />
             </div>
-
             {/* Fit-Out block */}
-            <div className="border rounded-md p-3">
+            <div className="border rounded-md p-3 bg-white">
               <div className="flex flex-wrap items-center gap-4 mb-3">
                 <span className="text-gray-700 font-medium">Fit-Out Input:</span>
-                <label className="inline-flex items-center gap-2">
-                  <input type="radio" checked={f.fitMode === "perNLA"} onChange={() => S("fitMode")("perNLA")} />
-                  <span>€/sqm (NLA)</span>
-                </label>
-                <label className="inline-flex items-center gap-2">
-                  <input type="radio" checked={f.fitMode === "perGLA"} onChange={() => S("fitMode")("perGLA")} />
-                  <span>€/sqm (GLA)</span>
-                </label>
-                <label className="inline-flex items-center gap-2">
-                  <input type="radio" checked={f.fitMode === "total"} onChange={() => S("fitMode")("total")} />
-                  <span>Total (€)</span>
-                </label>
+                <label><input type="radio" checked={f.fitMode === "perNLA"} onChange={() => S("fitMode")("perNLA")} /> €/sqm (NLA)</label>
+                <label><input type="radio" checked={f.fitMode === "perGLA"} onChange={() => S("fitMode")("perGLA")} /> €/sqm (GLA)</label>
+                <label><input type="radio" checked={f.fitMode === "total"} onChange={() => S("fitMode")("total")} /> Total (€)</label>
               </div>
-
               <NumericField label="Fit-Out €/sqm (NLA)" value={f.fitPerNLA} onChange={S("fitPerNLA")} readOnly={f.fitMode !== "perNLA"} suffix="€/sqm" />
               <NumericField label="Fit-Out €/sqm (GLA)" value={f.fitPerGLA} onChange={S("fitPerGLA")} readOnly={f.fitMode !== "perGLA"} suffix="€/sqm" />
               <NumericField label="Fit-Out Total (€)" value={f.fitTot} onChange={S("fitTot")} readOnly={f.fitMode !== "total"} suffix="€" />
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <NumericField label="Agent Fees (months)" value={f.agent} onChange={S("agent")} />
               <NumericField label="Unforeseen Costs (lump sum €)" value={f.unforeseen} onChange={S("unforeseen")} suffix="€" />
             </div>
           </div>
-
-          {/* RIGHT: Results */}
-          <div className="md:sticky md:top-6 h-fit">
-            <div ref={resultsCardRef} className="rounded-lg border p-4 space-y-2 bg-white">
-              {/* Export-Buttons (werden NICHT in results-content exportiert) */}
-              <div className="flex gap-2 justify-end">
-                <button
-                  onClick={exportResultsPNG}
-                  className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm"
-                >
-                  Export Results PNG
-                </button>
-                <button
-                  onClick={() => exportNode(pageRef.current, "ner-full.png")}
-                  className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm"
-                >
-                  Export Full PNG
-                </button>
+          {/* RIGHT Results */}
+          <div className="md:sticky md:top-6 h-fit" ref={resultsContentRef}>
+            <div className="rounded-lg border p-4 space-y-2 bg-white">
+              {f.tenant && <p className="font-bold text-lg underline mb-2">Tenant: {f.tenant}</p>}
+              <p><strong>Headline Rent:</strong> {F(rent, 2)} €/sqm</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-2 mt-1">
+                <div>Total Headline Rent</div><div className="text-right">{FCUR(totalHeadline)}</div>
+                <div>Total Rent Frees</div><div className="text-right text-red-600">-{FCUR(totalRentFrees)}</div>
+                <div>Total Agent Fees</div><div className="text-right text-red-600">-{FCUR(totalAgentFees)}</div>
+                <div>Unforeseen Costs</div><div className="text-right text-red-600">-{FCUR(totalUnforeseen)}</div>
               </div>
-
-              {/* Inhalte für Export */}
-              <div ref={resultsContentRef}>
-                {f.tenant.trim() && (
-                  <div className="mb-1">
-                    <span className="text-xl font-bold">
-                      Tenant: <u>{f.tenant.trim()}</u>
-                    </span>
-                  </div>
-                )}
-
-                <p className="mb-1">
-                  <strong className="text-lg">Headline Rent:</strong> <strong>{F(rent, 2)} €/sqm</strong>
-                </p>
-
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
-                  <div>Total Headline Rent</div>
-                  <div className="text-right"><Money value={ totalHeadline } /></div>
-
-                  <div>Total Rent Frees</div>
-                  <div className="text-right"><Money value={ -totalRentFrees } /></div>
-
-                  <div>Total Agent Fees</div>
-                  <div className="text-right"><Money value={ -totalAgentFees } /></div>
-
-                  <div>Unforeseen Costs</div>
-                  <div className="text-right"><Money value={ -totalUnforeseen } /></div>
+              <p className="text-sm text-red-500 font-semibold">Total Fit Out Costs: {FCUR(totalFit)}</p>
+              <p>1️⃣ NER incl. Rent Frees: <b>{F(ner1, 2)} €/sqm</b><Delta base={rent} val={ner1} /></p>
+              <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 2)} €/sqm</b><Delta base={rent} val={ner2} /></p>
+              <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b><Delta base={rent} val={ner3} /></p>
+              {/* Charts row */}
+              <div className="mt-4 grid grid-cols-3 gap-4">
+                <div className="h-60 border rounded p-2 col-span-1">
+                  <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartFitOutData}>
+                      <XAxis dataKey="name" hide />
+                      <YAxis hide />
+                      <Tooltip formatter={(v) => FCUR(v)} />
+                      <Bar dataKey="eur" fill={FIT_OUT_COLOR} barSize={50} isAnimationActive={!isExporting}>
+                        <LabelList content={<VerticalMoneyLabel />} />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
-
-                <p className="text-sm font-semibold text-red-500 mb-1">
-                  Total Fit Out Costs: {FCUR(totalFit)}
-                </p>
-
-                <p>1️⃣ NER incl. Rent Frees: <b>{F(ner1, 2)} €/sqm</b><Delta base={rent} val={ner1} /></p>
-                <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 2)} €/sqm</b><Delta base={rent} val={ner2} /></p>
-                <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b><Delta base={rent} val={ner3} /></p>
-
-                {/* Charts */}
-                <div className="mt-4 grid grid-cols-3 gap-6">
-                  <div className="h-60 border rounded p-2 col-span-1">
-                    <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartFitOutData}>
-                        <XAxis dataKey="name" hide />
-                        <YAxis hide />
-                        <Tooltip formatter={(v) => FCUR0(v)} />
-                        <ReferenceLine y={0} />
-                        <Bar dataKey="eur" fill={FIT_OUT_COLOR} barSize={40} isAnimationActive={!isExporting}>
-                          <LabelList content={<VerticalMoneyLabel0 />} />
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  <div className="h-60 border rounded p-2 col-span-2">
-                    <div className="text-sm font-bold text-center mb-1">NER vs Headline (€/sqm)</div>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={nerBars} barCategoryGap={18} barGap={4}>
-                        <XAxis dataKey="name" />
-                        <YAxis hide />
-                        <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
-                        <ReferenceLine y={0} />
-                        <Bar dataKey="sqm" barSize={36} isAnimationActive={!isExporting}>
-                          <LabelList dataKey="sqm" content={<BarNumberLabel />} />
-                          <LabelList dataKey="pct" content={<PercentLabel />} />
-                          {nerBars.map((e, i) => (
-                            <Cell
-                              key={i}
-                              fill={e.color}
-                              stroke={e.name === "Final" ? "#dc2626" : undefined}
-                              strokeWidth={e.name === "Final" ? 2 : undefined}
-                            />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                <div className="h-60 border rounded p-2 col-span-2">
+                  <div className="text-sm font-bold text-center mb-1">NER vs Headline (€/sqm)</div>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={nerBars}>
+                      <XAxis dataKey="name" />
+                      <YAxis hide />
+                      <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
+                      <Bar dataKey="sqm" barSize={40} isAnimationActive={!isExporting}>
+                        <LabelList dataKey="sqm" content={<BarNumberLabel />} />
+                        <LabelList dataKey="pct" content={<PercentLabel />} />
+                        {nerBars.map((entry, index) => (
+                          <Cell key={index} fill={entry.color} stroke={entry.name === "Final" ? "#dc2626" : undefined} strokeWidth={entry.name === "Final" ? 2 : undefined} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
-
-                <p className="border-t pt-2 mt-10">
-                  4️⃣ <b>Final NER</b> (incl. all above + Unforeseen): <b>{F(ner4, 2)} €/sqm</b>
-                  <Delta base={rent} val={ner4} />
-                </p>
               </div>
+              <p className="border-t pt-2 mt-6">
+                4️⃣ <b>Final NER</b> (incl. all above + Unforeseen): <b>{F(ner4, 2)} €/sqm</b>
+                <Delta base={rent} val={ner4} />
+              </p>
             </div>
           </div>
+        </div>
+        <div className="flex justify-end mt-4">
+          <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">
+            Export Results PNG
+          </button>
         </div>
       </div>
     </div>
