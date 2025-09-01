@@ -8,7 +8,7 @@ import {
   Tooltip,
   LabelList,
   ReferenceLine,
-  Cell, // <-- needed for per-bar colors
+  Cell, // wichtig für individuelle Balkenfarben
 } from "recharts";
 
 /* ---------- utils ---------- */
@@ -31,24 +31,29 @@ const FCUR = (n) =>
     currency: "EUR",
   });
 
-/* ---------- delta badge ---------- */
+/* Geldwert mit Farbe je nach Vorzeichen */
+function Money({ value, strong = true, alignRight = false }) {
+  const cls =
+    (value < 0 ? "text-red-600" : "text-gray-900") +
+    (strong ? " font-medium" : "") +
+    (alignRight ? " text-right" : "");
+  return <span className={cls}>{FCUR(value)}</span>;
+}
+
+/* ---------- Delta-Badge (rot wenn unter Headline) ---------- */
 function Delta({ base, val }) {
   const pct = base > 0 ? ((val - base) / base) * 100 : 0;
-  const rounded = Math.abs(pct) < 0.005 ? 0 : pct;
-  const up = rounded > 0;
-  const down = rounded < 0;
+  const up = pct > 0;
+  const down = pct < 0;
+  const sign = pct > 0 ? "+" : "";
   return (
-    <span
-      className={`${
-        down ? "text-red-600" : up ? "text-green-600" : "text-gray-500"
-      } font-medium ml-2`}
-    >
-      {down ? "▼" : up ? "▲" : "■"} {F(Math.abs(rounded), 2)}%
+    <span className={`${down ? "text-red-600" : up ? "text-green-600" : "text-gray-500"} font-medium ml-2`}>
+      {down ? "▼" : up ? "▲" : "■"} {sign}{F(pct, 2)}%
     </span>
   );
 }
 
-/* ---------- numeric input ---------- */
+/* ---------- Numeric Input ---------- */
 function NumericField({
   label,
   value,
@@ -62,13 +67,7 @@ function NumericField({
 }) {
   const [focus, setFocus] = useState(false);
   const num = P(value);
-  const show = focus
-    ? value
-    : format === "int"
-    ? F(num, 0)
-    : format === "1dec"
-    ? F(num, 1)
-    : F(num, 2);
+  const show = focus ? value : format === "int" ? F(num, 0) : format === "1dec" ? F(num, 1) : F(num, 2);
   return (
     <label className="block">
       <span className="text-gray-700">{label}</span>
@@ -87,12 +86,8 @@ function NumericField({
             onChange(String(n));
             onCommit?.(n);
           }}
-          onChange={(e) =>
-            onChange(e.target.value.replace(/[^\d.,-]/g, ""))
-          }
-          className={`mt-1 block w-full border rounded-md p-2 pr-16 ${
-            readOnly ? "bg-gray-100 text-gray-600" : ""
-          }`}
+          onChange={(e) => onChange(e.target.value.replace(/[^\d.,-]/g, ""))}
+          className={`mt-1 block w-full border rounded-md p-2 pr-16 ${readOnly ? "bg-gray-100 text-gray-600" : ""}`}
         />
         {suffix && (
           <span className="absolute inset-y-0 right-3 top-1/2 -translate-y-1/2 text-gray-500">
@@ -104,7 +99,39 @@ function NumericField({
   );
 }
 
-/* ---------- app ---------- */
+/* ---------- Custom Labels für Charts ---------- */
+// Prozent-Label über den NER-Balken (rot mit Minus, grün mit +)
+const PercentLabel = ({ x, y, value }) => {
+  if (value == null) return null;
+  const fill = value < 0 ? "#dc2626" : "#16a34a";
+  const sign = value > 0 ? "+" : "";
+  return (
+    <text x={x} y={y - 4} textAnchor="middle" fill={fill} fontSize={12} fontWeight="700">
+      {sign}{F(value, 2)}%
+    </text>
+  );
+};
+// Vertikales Währungslabel im Fit-Outs-Balken
+const VerticalMoneyLabel = ({ x, y, width, height, value }) => {
+  if (value == null) return null;
+  const cx = x + width / 2;
+  const cy = y + height / 2;
+  return (
+    <text
+      x={cx}
+      y={cy}
+      transform={`rotate(-90, ${cx}, ${cy})`}
+      textAnchor="middle"
+      fill="#ffffff"
+      fontSize={12}
+      fontWeight="700"
+    >
+      {FCUR(value)}
+    </text>
+  );
+};
+
+/* ---------- App ---------- */
 export default function App() {
   const [f, setF] = useState({
     nla: "1000",
@@ -121,6 +148,7 @@ export default function App() {
   });
   const S = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
 
+  // parsed
   const nla = clamp(P(f.nla));
   const addon = clamp(P(f.addon));
   const rent = clamp(P(f.rent));
@@ -129,6 +157,7 @@ export default function App() {
   const agent = clamp(P(f.agent));
   const unforeseen = clamp(P(f.unforeseen));
 
+  // derived
   const gla = useMemo(() => nla * (1 + addon / 100), [nla, addon]);
   const months = Math.max(0, duration - rf);
   const gross = rent * gla * months;
@@ -137,11 +166,11 @@ export default function App() {
   const perGLA = clamp(P(f.fitPerGLA));
   const tot = clamp(P(f.fitTot));
 
+  // Sync der drei Fit-Out Eingaben
   useEffect(() => {
     const nNLA = clamp(P(f.fitPerNLA));
     const nGLA = clamp(P(f.fitPerGLA));
     const nTot = clamp(P(f.fitTot));
-
     if (f.fitMode === "perNLA") {
       const t = nNLA * nla;
       const g = gla > 0 ? t / gla : 0;
@@ -163,23 +192,26 @@ export default function App() {
   const totalFit =
     f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
 
-  const agentFees = agent * rent * gla;
+  const agentFees = agent * rent * gla; // EUR
   const denom = Math.max(1e-9, duration * gla);
 
+  // NERs
   const ner1 = gross / denom;
   const ner2 = (gross - totalFit) / denom;
   const ner3 = (gross - totalFit - agentFees) / denom;
   const ner4 = (gross - totalFit - agentFees - unforeseen) / denom;
 
+  // Absolute Totals (EUR)
   const totalHeadline = rent * gla * duration;
   const totalRentFrees = rent * gla * rf;
   const totalAgentFees = agentFees;
   const totalUnforeseen = unforeseen;
 
   // Farben
-  const FIT_OUT_COLOR = "#c2410c"; // dunkel Orange
-  const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"]; // 4 Blautöne
+  const FIT_OUT_COLOR = "#c2410c"; // dunkles Orange
+  const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"]; // Blautöne
 
+  // Chart-Daten
   const chartFitOutData = [{ name: "Fit-Outs", eur: totalFit }];
   const nerBars = [
     { label: "NER 1", val: ner1 },
@@ -189,13 +221,14 @@ export default function App() {
   ].map((d, i) => ({
     name: d.label,
     sqm: d.val,
-    pct: rent > 0 ? ((d.val - rent) / rent) * 100 : 0,
+    pct: rent > 0 ? ((d.val - rent) / rent) * 100 : 0, // negativ = Abschlag
     color: NER_COLORS[i],
   }));
 
   return (
     <div className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md">
-      <h2 className="text-2xl font-bold mb-4">Net Effective Rent Calculator</h2>
+      {/* 1) Titel zentriert */}
+      <h2 className="text-2xl font-bold mb-4 text-center">Net Effective Rent Calculator</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* LEFT: Inputs */}
@@ -248,22 +281,36 @@ export default function App() {
         {/* RIGHT: Results */}
         <div className="md:sticky md:top-6 h-fit">
           <div className="rounded-lg border p-4 space-y-2 bg-white">
-            <p className="text-sm text-red-500 font-semibold">Total Fit Out Costs: {FCUR(totalFit)}</p>
-            <p><strong>Headline Rent:</strong> {F(rent, 2)} €/sqm</p>
+            {/* 2) Headline Rent fett + 3) Block ganz oben + negative rot */}
+            <p className="mb-1">
+              <strong className="text-lg">Headline Rent:</strong> <strong>{F(rent, 2)} €/sqm</strong>
+            </p>
 
-            {/* Totals */}
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-2 mt-1">
-              <div>Total Headline Rent</div><div className="text-right">{FCUR(totalHeadline)}</div>
-              <div>Total Rent Frees</div><div className="text-right">-{FCUR(totalRentFrees)}</div>
-              <div>Total Agent Fees</div><div className="text-right">-{FCUR(totalAgentFees)}</div>
-              <div>Unforeseen Costs</div><div className="text-right">-{FCUR(totalUnforeseen)}</div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
+              <div>Total Headline Rent</div>
+              <div className="text-right"><Money value={ totalHeadline } /></div>
+
+              <div>Total Rent Frees</div>
+              <div className="text-right"><Money value={ -totalRentFrees } /></div>
+
+              <div>Total Agent Fees</div>
+              <div className="text-right"><Money value={ -totalAgentFees } /></div>
+
+              <div>Unforeseen Costs</div>
+              <div className="text-right"><Money value={ -totalUnforeseen } /></div>
             </div>
 
+            {/* 4) Total Fit Outs direkt darunter */}
+            <p className="text-sm font-semibold text-red-500 mb-1">
+              Total Fit Out Costs: {FCUR(totalFit)}
+            </p>
+
+            {/* NER 1–3 */}
             <p>1️⃣ NER incl. Rent Frees: <b>{F(ner1, 2)} €/sqm</b><Delta base={rent} val={ner1} /></p>
             <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 2)} €/sqm</b><Delta base={rent} val={ner2} /></p>
             <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b><Delta base={rent} val={ner3} /></p>
 
-            {/* Charts row */}
+            {/* 5–6) Charts: Fit-Outs schmal mit gedrehtem Label, NER breit; im NER nur Zahlen im Balken + rote Prozente mit Minus */}
             <div className="mt-4 grid grid-cols-3 gap-4">
               {/* Fit-Outs narrow */}
               <div className="h-60 border rounded p-2 col-span-1">
@@ -273,8 +320,9 @@ export default function App() {
                     <XAxis dataKey="name" hide />
                     <YAxis hide />
                     <Tooltip formatter={(v) => FCUR(v)} />
+                    <ReferenceLine y={0} />
                     <Bar dataKey="eur" fill={FIT_OUT_COLOR}>
-                      <LabelList dataKey="eur" position="top" formatter={(v) => FCUR(v)} />
+                      <LabelList content={<VerticalMoneyLabel />} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -288,11 +336,14 @@ export default function App() {
                     <XAxis dataKey="name" />
                     <YAxis hide />
                     <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
+                    <ReferenceLine y={0} />
                     <Bar dataKey="sqm">
+                      {/* nur Zahlen im Balken */}
                       <LabelList dataKey="sqm" position="insideTop" formatter={(v) => F(v, 2)} />
-                      <LabelList dataKey="pct" position="top" formatter={(v) => `${F(Math.abs(v), 2)}%`} />
-                      {nerBars.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      {/* Prozente darüber – rot mit Minus (oder grün mit +) */}
+                      <LabelList dataKey="pct" content={<PercentLabel />} />
+                      {nerBars.map((e, i) => (
+                        <Cell key={i} fill={e.color} />
                       ))}
                     </Bar>
                   </BarChart>
