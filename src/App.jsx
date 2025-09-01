@@ -136,8 +136,8 @@ const BarNumberLabel = ({ x, y, width, height, value }) => {
     </text>
   );
 };
-// Zentriertes, größeres Währungslabel im Fit-Outs-Balken – OHNE Nachkommastellen
-const CenterMoneyLabel = ({ x, y, width, height, value }) => {
+// Fit-Outs: vertikal (90° gedreht), ohne Nachkommastellen, mittig im Balken
+const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   if (value == null) return null;
   const cx = x + width / 2;
   const cy = y + height / 2;
@@ -145,8 +145,8 @@ const CenterMoneyLabel = ({ x, y, width, height, value }) => {
     <text
       x={cx}
       y={cy}
+      transform={`rotate(-90, ${cx}, ${cy})`}
       textAnchor="middle"
-      dominantBaseline="middle"
       fill="#ffffff"
       fontSize={16}
       fontWeight="800"
@@ -234,8 +234,8 @@ export default function App() {
   const totalUnforeseen = unforeseen;
 
   // Farben
-  const FIT_OUT_COLOR = "#c2410c"; // Orange
-  const HEADLINE_COLOR = "#065f46"; // dunkelgrün
+  const FIT_OUT_COLOR = "#c2410c";   // Orange
+  const HEADLINE_COLOR = "#065f46";  // Dunkelgrün
   const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"]; // Blautöne
 
   // Chart-Daten
@@ -248,12 +248,13 @@ export default function App() {
     { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
   ].map(d => ({ name: d.label, sqm: d.val, pct: d.pct, color: d.color }));
 
-  // PNG export (ganze Karte)
-  const resultsRef = useRef(null);
+  // PNG export (nur Card-Inhalt, der Button bleibt draußen)
+  const resultsCardRef = useRef(null); // gesamte Card
+  const resultsContentRef = useRef(null); // NUR Inhalt
   const downloadPNG = async () => {
-    if (!resultsRef.current) return;
+    if (!resultsContentRef.current) return;
     try {
-      const dataUrl = await toPng(resultsRef.current, {
+      const dataUrl = await toPng(resultsContentRef.current, {
         cacheBust: true,
         pixelRatio: 3,
         backgroundColor: "#ffffff",
@@ -272,16 +273,16 @@ export default function App() {
       {/* Titel zentriert */}
       <h2 className="text-2xl font-bold mb-2 text-center">Net Effective Rent Calculator</h2>
 
-      {/* Tenant field (unter dem Titel, zentriert, volle Breite) */}
+      {/* EIN Tenant-Feld unter dem Titel */}
       <div className="mb-4 flex justify-center">
         <div className="w-full md:w-1/2">
           <label className="block text-center">
-            <span className="text-gray-700">Tenant (optional)</span>
+            <span className="text-gray-700">Tenant</span>
             <input
               type="text"
               value={f.tenant}
               onChange={(e) => S("tenant")(e.target.value)}
-              placeholder="Enter tenant name"
+              placeholder="Tenant"
               className="mt-1 block w-full border rounded-md p-2 text-center"
             />
           </label>
@@ -338,8 +339,8 @@ export default function App() {
 
         {/* RIGHT: Results */}
         <div className="md:sticky md:top-6 h-fit">
-          <div ref={resultsRef} className="rounded-lg border p-4 space-y-2 bg-white">
-            {/* Export button (oben rechts) */}
+          <div ref={resultsCardRef} className="rounded-lg border p-4 space-y-2 bg-white">
+            {/* Export-Button – NICHT Teil des Exports */}
             <div className="flex justify-end">
               <button
                 onClick={downloadPNG}
@@ -349,89 +350,93 @@ export default function App() {
               </button>
             </div>
 
-            {/* Optional Tenant in der Card zeigen */}
-            {f.tenant?.trim() && (
-              <p className="text-sm text-gray-600 -mt-2">Tenant: <b>{f.tenant.trim()}</b></p>
-            )}
+            {/* Export-Inhalt */}
+            <div ref={resultsContentRef}>
+              {/* Tenant groß & fett (nur Text, kein 2. Feld) */}
+              {f.tenant.trim() && (
+                <div className="mb-1">
+                  <div className="text-xl font-bold">{f.tenant.trim()}</div>
+                </div>
+              )}
 
-            {/* Headline Rent-Block */}
-            <p className="mb-1">
-              <strong className="text-lg">Headline Rent:</strong> <strong>{F(rent, 2)} €/sqm</strong>
-            </p>
+              <p className="mb-1">
+                <strong className="text-lg">Headline Rent:</strong> <strong>{F(rent, 2)} €/sqm</strong>
+              </p>
 
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
-              <div>Total Headline Rent</div>
-              <div className="text-right"><Money value={ totalHeadline } /></div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
+                <div>Total Headline Rent</div>
+                <div className="text-right"><Money value={ totalHeadline } /></div>
 
-              <div>Total Rent Frees</div>
-              <div className="text-right"><Money value={ -totalRentFrees } /></div>
+                <div>Total Rent Frees</div>
+                <div className="text-right"><Money value={ -totalRentFrees } /></div>
 
-              <div>Total Agent Fees</div>
-              <div className="text-right"><Money value={ -totalAgentFees } /></div>
+                <div>Total Agent Fees</div>
+                <div className="text-right"><Money value={ -totalAgentFees } /></div>
 
-              <div>Unforeseen Costs</div>
-              <div className="text-right"><Money value={ -totalUnforeseen } /></div>
-            </div>
-
-            {/* Total Fit Outs */}
-            <p className="text-sm font-semibold text-red-500 mb-1">
-              Total Fit Out Costs: {FCUR(totalFit)}
-            </p>
-
-            {/* NER 1–3 */}
-            <p>1️⃣ NER incl. Rent Frees: <b>{F(ner1, 2)} €/sqm</b><Delta base={rent} val={ner1} /></p>
-            <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 2)} €/sqm</b><Delta base={rent} val={ner2} /></p>
-            <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b><Delta base={rent} val={ner3} /></p>
-
-            {/* Charts */}
-            <div className="mt-4 grid grid-cols-3 gap-6">
-              {/* Fit-Outs – breiterer Balken, zentriertes Label ohne Nachkommastellen, Titel fett & zentriert */}
-              <div className="h-60 border rounded p-2 col-span-1">
-                <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartFitOutData}>
-                    <XAxis dataKey="name" hide />
-                    <YAxis hide />
-                    <Tooltip formatter={(v) => FCUR0(v)} />
-                    <ReferenceLine y={0} />
-                    <Bar dataKey="eur" fill={FIT_OUT_COLOR} barSize={40}>
-                      <LabelList content={<CenterMoneyLabel />} />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <div>Unforeseen Costs</div>
+                <div className="text-right"><Money value={ -totalUnforeseen } /></div>
               </div>
 
-              {/* NER + Headline – Titel fett & zentriert */}
-              <div className="h-60 border rounded p-2 col-span-2">
-                <div className="text-sm font-bold text-center mb-1">NER vs Headline (€/sqm)</div>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={nerBars} barCategoryGap={18} barGap={4}>
-                    <XAxis dataKey="name" />
-                    <YAxis hide />
-                    <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
-                    <ReferenceLine y={0} />
-                    <Bar dataKey="sqm" barSize={36}>
-                      <LabelList dataKey="sqm" content={<BarNumberLabel />} />
-                      <LabelList dataKey="pct" content={<PercentLabel />} />
-                      {nerBars.map((e, i) => (
-                        <Cell
-                          key={i}
-                          fill={e.color}
-                          stroke={e.name === "Final" ? "#dc2626" : undefined}
-                          strokeWidth={e.name === "Final" ? 2 : undefined}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+              {/* Total Fit Outs */}
+              <p className="text-sm font-semibold text-red-500 mb-1">
+                Total Fit Out Costs: {FCUR(totalFit)}
+              </p>
 
-            {/* Final NER betont weiter unten */}
-            <p className="border-t pt-2 mt-10">
-              4️⃣ <b>Final NER</b> (incl. all above + Unforeseen): <b>{F(ner4, 2)} €/sqm</b>
-              <Delta base={rent} val={ner4} />
-            </p>
+              {/* NER 1–3 */}
+              <p>1️⃣ NER incl. Rent Frees: <b>{F(ner1, 2)} €/sqm</b><Delta base={rent} val={ner1} /></p>
+              <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 2)} €/sqm</b><Delta base={rent} val={ner2} /></p>
+              <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b><Delta base={rent} val={ner3} /></p>
+
+              {/* Charts */}
+              <div className="mt-4 grid grid-cols-3 gap-6">
+                {/* Fit-Outs – Balken mit vertikalem Label */}
+                <div className="h-60 border rounded p-2 col-span-1">
+                  <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartFitOutData}>
+                      <XAxis dataKey="name" hide />
+                      <YAxis hide />
+                      <Tooltip formatter={(v) => FCUR0(v)} />
+                      <ReferenceLine y={0} />
+                      <Bar dataKey="eur" fill={FIT_OUT_COLOR} barSize={40}>
+                        <LabelList content={<VerticalMoneyLabel0 />} />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* NER + Headline */}
+                <div className="h-60 border rounded p-2 col-span-2">
+                  <div className="text-sm font-bold text-center mb-1">NER vs Headline (€/sqm)</div>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={nerBars} barCategoryGap={18} barGap={4}>
+                      <XAxis dataKey="name" />
+                      <YAxis hide />
+                      <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
+                      <ReferenceLine y={0} />
+                      <Bar dataKey="sqm" barSize={36}>
+                        <LabelList dataKey="sqm" content={<BarNumberLabel />} />
+                        <LabelList dataKey="pct" content={<PercentLabel />} />
+                        {nerBars.map((e, i) => (
+                          <Cell
+                            key={i}
+                            fill={e.color}
+                            stroke={e.name === "Final" ? "#dc2626" : undefined}
+                            strokeWidth={e.name === "Final" ? 2 : undefined}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Final NER */}
+              <p className="border-t pt-2 mt-10">
+                4️⃣ <b>Final NER</b> (incl. all above + Unforeseen): <b>{F(ner4, 2)} €/sqm</b>
+                <Delta base={rent} val={ner4} />
+              </p>
+            </div>
           </div>
         </div>
       </div>
