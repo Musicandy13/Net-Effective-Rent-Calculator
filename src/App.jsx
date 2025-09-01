@@ -243,19 +243,21 @@ export default function App() {
     color: NER_COLORS[i],
   }));
 
-  // PNG export for charts (both charts as one image)
-  const chartsRef = useRef(null);
-  const downloadPNG = async () => {
-    if (!chartsRef.current) return;
+  // PNG export
+  const resultsRef = useRef(null);  // whole card
+  const chartsRef = useRef(null);   // charts only
+
+  const downloadPNG = async (node, filename) => {
+    if (!node) return;
     try {
-      const dataUrl = await toPng(chartsRef.current, {
+      const dataUrl = await toPng(node, {
         cacheBust: true,
         pixelRatio: 2,
         backgroundColor: "#ffffff",
       });
       const a = document.createElement("a");
       a.href = dataUrl;
-      a.download = "ner-charts.png";
+      a.download = filename;
       a.click();
     } catch (e) {
       console.error("PNG export failed", e);
@@ -317,7 +319,30 @@ export default function App() {
 
         {/* RIGHT: Results */}
         <div className="md:sticky md:top-6 h-fit">
-          <div className="rounded-lg border p-4 space-y-2 bg-white">
+          <div ref={resultsRef} className="rounded-lg border p-4 space-y-2 bg-white">
+            {/* Export dropdown (oben rechts) */}
+            <div className="flex justify-end">
+              <details className="relative">
+                <summary className="list-none cursor-pointer px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">
+                  Export
+                </summary>
+                <div className="absolute right-0 mt-1 w-56 border rounded bg-white shadow">
+                  <button
+                    className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm"
+                    onClick={() => downloadPNG(resultsRef.current, "ner-results.png")}
+                  >
+                    Export results (whole card)
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm"
+                    onClick={() => downloadPNG(chartsRef.current, "ner-charts.png")}
+                  >
+                    Export charts only
+                  </button>
+                </div>
+              </details>
+            </div>
+
             {/* Headline Rent-Block ganz oben */}
             <p className="mb-1">
               <strong className="text-lg">Headline Rent:</strong> <strong>{F(rent, 2)} €/sqm</strong>
@@ -347,8 +372,8 @@ export default function App() {
             <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 2)} €/sqm</b><Delta base={rent} val={ner2} /></p>
             <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b><Delta base={rent} val={ner3} /></p>
 
-            {/* Charts (exportable area) */}
-            <div ref={chartsRef} className="mt-4 grid grid-cols-3 gap-4">
+            {/* Charts area (ref for charts-only export) */}
+            <div ref={chartsRef} className="mt-4 grid grid-cols-3 gap-6">
               {/* Fit-Outs schmal, mit größerem, rotiertem Label */}
               <div className="h-60 border rounded p-2 col-span-1">
                 <div className="text-sm font-medium mb-1">Total Fit-Outs</div>
@@ -358,7 +383,7 @@ export default function App() {
                     <YAxis hide />
                     <Tooltip formatter={(v) => FCUR(v)} />
                     <ReferenceLine y={0} />
-                    <Bar dataKey="eur" fill={FIT_OUT_COLOR}>
+                    <Bar dataKey="eur" fill={FIT_OUT_COLOR} barSize={24}>
                       <LabelList content={<VerticalMoneyLabel />} />
                     </Bar>
                   </BarChart>
@@ -369,7 +394,7 @@ export default function App() {
               <div className="h-60 border rounded p-2 col-span-2">
                 <div className="text-sm font-medium mb-1">NER vs Headline (€/sqm)</div>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={nerBars}>
+                  <BarChart data={nerBars} barCategoryGap={28} barGap={6}>
                     <XAxis dataKey="name" />
                     <YAxis hide />
                     <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
@@ -381,7 +406,7 @@ export default function App() {
                         <Cell
                           key={i}
                           fill={e.color}
-                          // 2) Final-Bar rot umranden
+                          // roter Rahmen nur beim Final-Balken
                           stroke={i === nerBars.length - 1 ? "#dc2626" : undefined}
                           strokeWidth={i === nerBars.length - 1 ? 2 : undefined}
                         />
@@ -392,17 +417,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Download button */}
-            <div className="flex justify-end mt-3">
-              <button
-                onClick={downloadPNG}
-                className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm"
-              >
-                Download charts as PNG
-              </button>
-            </div>
-
-            {/* Final NER noch weiter nach unten */}
+            {/* Final NER betont weiter unten */}
             <p className="border-t pt-2 mt-10">
               4️⃣ <b>Final NER</b> (incl. all above + Unforeseen): <b>{F(ner4, 2)} €/sqm</b>
               <Delta base={rent} val={ner4} />
