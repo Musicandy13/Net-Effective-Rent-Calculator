@@ -31,6 +31,13 @@ const FCUR = (n) =>
     style: "currency",
     currency: "EUR",
   });
+const FCUR0 = (n) =>
+  (Number.isFinite(n) ? n : 0).toLocaleString("en-US", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
 
 /* Geldwert mit Farbe je nach Vorzeichen */
 function Money({ value }) {
@@ -129,8 +136,8 @@ const BarNumberLabel = ({ x, y, width, height, value }) => {
     </text>
   );
 };
-// Vertikales, größeres Währungslabel im Fit-Outs-Balken
-const VerticalMoneyLabel = ({ x, y, width, height, value }) => {
+// Zentriertes, größeres Währungslabel im Fit-Outs-Balken – OHNE Nachkommastellen
+const CenterMoneyLabel = ({ x, y, width, height, value }) => {
   if (value == null) return null;
   const cx = x + width / 2;
   const cy = y + height / 2;
@@ -138,13 +145,13 @@ const VerticalMoneyLabel = ({ x, y, width, height, value }) => {
     <text
       x={cx}
       y={cy}
-      transform={`rotate(-90, ${cx}, ${cy})`}
       textAnchor="middle"
+      dominantBaseline="middle"
       fill="#ffffff"
       fontSize={16}
       fontWeight="800"
     >
-      {FCUR(value)}
+      {FCUR0(value)}
     </text>
   );
 };
@@ -152,6 +159,7 @@ const VerticalMoneyLabel = ({ x, y, width, height, value }) => {
 /* ---------- App ---------- */
 export default function App() {
   const [f, setF] = useState({
+    tenant: "",
     nla: "1000",
     addon: "5.00",
     rent: "15.00",
@@ -232,8 +240,6 @@ export default function App() {
 
   // Chart-Daten
   const chartFitOutData = [{ name: "Fit-Outs", eur: totalFit }];
-
-  // NER-Chart jetzt MIT Headline-Balken links
   const nerBars = [
     { label: "Headline", val: rent, pct: null, color: HEADLINE_COLOR },
     { label: "NER 1", val: ner1, pct: rent > 0 ? ((ner1 - rent) / rent) * 100 : null, color: NER_COLORS[0] },
@@ -242,14 +248,14 @@ export default function App() {
     { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
   ].map(d => ({ name: d.label, sqm: d.val, pct: d.pct, color: d.color }));
 
-  // PNG export (nur noch GANZE Karte, höhere Qualität)
+  // PNG export (ganze Karte)
   const resultsRef = useRef(null);
   const downloadPNG = async () => {
     if (!resultsRef.current) return;
     try {
       const dataUrl = await toPng(resultsRef.current, {
         cacheBust: true,
-        pixelRatio: 3,              // schärferes PNG
+        pixelRatio: 3,
         backgroundColor: "#ffffff",
       });
       const a = document.createElement("a");
@@ -264,7 +270,23 @@ export default function App() {
   return (
     <div className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md">
       {/* Titel zentriert */}
-      <h2 className="text-2xl font-bold mb-4 text-center">Net Effective Rent Calculator</h2>
+      <h2 className="text-2xl font-bold mb-2 text-center">Net Effective Rent Calculator</h2>
+
+      {/* Tenant field (unter dem Titel, zentriert, volle Breite) */}
+      <div className="mb-4 flex justify-center">
+        <div className="w-full md:w-1/2">
+          <label className="block text-center">
+            <span className="text-gray-700">Tenant (optional)</span>
+            <input
+              type="text"
+              value={f.tenant}
+              onChange={(e) => S("tenant")(e.target.value)}
+              placeholder="Enter tenant name"
+              className="mt-1 block w-full border rounded-md p-2 text-center"
+            />
+          </label>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* LEFT: Inputs */}
@@ -327,6 +349,11 @@ export default function App() {
               </button>
             </div>
 
+            {/* Optional Tenant in der Card zeigen */}
+            {f.tenant?.trim() && (
+              <p className="text-sm text-gray-600 -mt-2">Tenant: <b>{f.tenant.trim()}</b></p>
+            )}
+
             {/* Headline Rent-Block */}
             <p className="mb-1">
               <strong className="text-lg">Headline Rent:</strong> <strong>{F(rent, 2)} €/sqm</strong>
@@ -358,35 +385,33 @@ export default function App() {
 
             {/* Charts */}
             <div className="mt-4 grid grid-cols-3 gap-6">
-              {/* Fit-Outs schmal, mit größerem, rotiertem Label */}
+              {/* Fit-Outs – breiterer Balken, zentriertes Label ohne Nachkommastellen, Titel fett & zentriert */}
               <div className="h-60 border rounded p-2 col-span-1">
-                <div className="text-sm font-medium mb-1">Total Fit-Outs</div>
+                <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartFitOutData}>
                     <XAxis dataKey="name" hide />
                     <YAxis hide />
-                    <Tooltip formatter={(v) => FCUR(v)} />
+                    <Tooltip formatter={(v) => FCUR0(v)} />
                     <ReferenceLine y={0} />
-                    <Bar dataKey="eur" fill={FIT_OUT_COLOR} barSize={28}>
-                      <LabelList content={<VerticalMoneyLabel />} />
+                    <Bar dataKey="eur" fill={FIT_OUT_COLOR} barSize={40}>
+                      <LabelList content={<CenterMoneyLabel />} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
 
-              {/* NER + Headline breit */}
+              {/* NER + Headline – Titel fett & zentriert */}
               <div className="h-60 border rounded p-2 col-span-2">
-                <div className="text-sm font-medium mb-1">NER vs Headline (€/sqm)</div>
+                <div className="text-sm font-bold text-center mb-1">NER vs Headline (€/sqm)</div>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={nerBars} barCategoryGap={18} barGap={4}>
                     <XAxis dataKey="name" />
                     <YAxis hide />
                     <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
                     <ReferenceLine y={0} />
-                    <Bar dataKey="sqm" /* breitere Balken */ barSize={36}>
-                      {/* Zahl im Balken */}
+                    <Bar dataKey="sqm" barSize={36}>
                       <LabelList dataKey="sqm" content={<BarNumberLabel />} />
-                      {/* Prozent über Balken (Headline hat pct=null → kein Label) */}
                       <LabelList dataKey="pct" content={<PercentLabel />} />
                       {nerBars.map((e, i) => (
                         <Cell
