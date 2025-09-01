@@ -39,13 +39,13 @@ const FCUR0 = (n) =>
     maximumFractionDigits: 0,
   });
 
-/* Geldwert mit Farbe je nach Vorzeichen */
+/* Money with sign color */
 function Money({ value }) {
   const cls = value < 0 ? "text-red-600 font-medium" : "text-gray-900 font-medium";
   return <span className={cls}>{FCUR(value)}</span>;
 }
 
-/* ---------- Delta-Badge (rot wenn unter Headline) ---------- */
+/* Delta vs headline */
 function Delta({ base, val }) {
   const pct = base > 0 ? ((val - base) / base) * 100 : 0;
   const up = pct > 0;
@@ -105,7 +105,6 @@ function NumericField({
 }
 
 /* ---------- Custom Chart Labels ---------- */
-// Prozentlabel: exakt über dem Balken, mittig ausgerichtet
 const PercentLabel = ({ x, y, width, value }) => {
   if (value == null) return null;
   const cx = x + width / 2;
@@ -117,7 +116,7 @@ const PercentLabel = ({ x, y, width, value }) => {
     </text>
   );
 };
-// Zahlen im NER-Balken: horizontal & vertikal zentriert, fett
+
 const BarNumberLabel = ({ x, y, width, height, value }) => {
   if (value == null) return null;
   const cx = x + width / 2;
@@ -136,7 +135,8 @@ const BarNumberLabel = ({ x, y, width, height, value }) => {
     </text>
   );
 };
-// Fit-Outs: vertikal (90° gedreht), ohne Nachkommastellen, mittig im Balken
+
+/* Fit-Outs: vertical, no decimals */
 const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   if (value == null) return null;
   const cx = x + width / 2;
@@ -174,7 +174,7 @@ export default function App() {
   });
   const S = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
 
-  // parsed
+  /* parsed */
   const nla = clamp(P(f.nla));
   const addon = clamp(P(f.addon));
   const rent = clamp(P(f.rent));
@@ -183,7 +183,7 @@ export default function App() {
   const agent = clamp(P(f.agent));
   const unforeseen = clamp(P(f.unforeseen));
 
-  // derived
+  /* derived */
   const gla = useMemo(() => nla * (1 + addon / 100), [nla, addon]);
   const months = Math.max(0, duration - rf);
   const gross = rent * gla * months;
@@ -192,7 +192,7 @@ export default function App() {
   const perGLA = clamp(P(f.fitPerGLA));
   const tot = clamp(P(f.fitTot));
 
-  // Sync Fit-Out Eingaben
+  /* sync fit-outs */
   useEffect(() => {
     const nNLA = clamp(P(f.fitPerNLA));
     const nGLA = clamp(P(f.fitPerGLA));
@@ -218,27 +218,25 @@ export default function App() {
   const totalFit =
     f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
 
-  const agentFees = agent * rent * gla; // EUR
+  const agentFees = agent * rent * gla;
   const denom = Math.max(1e-9, duration * gla);
 
-  // NERs
   const ner1 = gross / denom;
   const ner2 = (gross - totalFit) / denom;
   const ner3 = (gross - totalFit - agentFees) / denom;
   const ner4 = (gross - totalFit - agentFees - unforeseen) / denom;
 
-  // Absolute Totals (EUR)
   const totalHeadline = rent * gla * duration;
   const totalRentFrees = rent * gla * rf;
   const totalAgentFees = agentFees;
   const totalUnforeseen = unforeseen;
 
-  // Farben
-  const FIT_OUT_COLOR = "#c2410c";   // Orange
-  const HEADLINE_COLOR = "#065f46";  // Dunkelgrün
-  const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"]; // Blautöne
+  /* colors */
+  const FIT_OUT_COLOR = "#c2410c";
+  const HEADLINE_COLOR = "#065f46";
+  const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"];
 
-  // Chart-Daten
+  /* chart data */
   const chartFitOutData = [{ name: "Fit-Outs", eur: totalFit }];
   const nerBars = [
     { label: "Headline", val: rent, pct: null, color: HEADLINE_COLOR },
@@ -248,20 +246,27 @@ export default function App() {
     { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
   ].map(d => ({ name: d.label, sqm: d.val, pct: d.pct, color: d.color }));
 
-  // PNG export (nur Card-Inhalt, der Button bleibt draußen)
-  const resultsCardRef = useRef(null); // gesamte Card
-  const resultsContentRef = useRef(null); // NUR Inhalt
-  const downloadPNG = async () => {
-    if (!resultsContentRef.current) return;
+  /* export refs */
+  const pageRef = useRef(null);           // entire page (inputs + results)
+  const resultsCardRef = useRef(null);    // the card with the button
+  const resultsContentRef = useRef(null); // content only (no button)
+
+  /* robust PNG export (avoid clipping) */
+  const exportNode = async (node, filename) => {
+    if (!node) return;
+    const w = node.scrollWidth;
+    const h = node.scrollHeight;
     try {
-      const dataUrl = await toPng(resultsContentRef.current, {
+      const dataUrl = await toPng(node, {
         cacheBust: true,
         pixelRatio: 3,
         backgroundColor: "#ffffff",
+        width: w,
+        height: h,
       });
       const a = document.createElement("a");
       a.href = dataUrl;
-      a.download = "ner-results.png";
+      a.download = filename;
       a.click();
     } catch (e) {
       console.error("PNG export failed", e);
@@ -269,23 +274,20 @@ export default function App() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md">
-      {/* Titel zentriert */}
+    <div ref={pageRef} className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md">
+      {/* Title */}
       <h2 className="text-2xl font-bold mb-2 text-center">Net Effective Rent Calculator</h2>
 
-      {/* EIN Tenant-Feld unter dem Titel */}
+      {/* Single Tenant input (no extra title) */}
       <div className="mb-4 flex justify-center">
         <div className="w-full md:w-1/2">
-          <label className="block text-center">
-            <span className="text-gray-700">Tenant</span>
-            <input
-              type="text"
-              value={f.tenant}
-              onChange={(e) => S("tenant")(e.target.value)}
-              placeholder="Tenant"
-              className="mt-1 block w-full border rounded-md p-2 text-center"
-            />
-          </label>
+          <input
+            type="text"
+            value={f.tenant}
+            onChange={(e) => S("tenant")(e.target.value)}
+            placeholder="Tenant"
+            className="mt-1 block w-full border rounded-md p-2 text-center"
+          />
         </div>
       </div>
 
@@ -340,22 +342,28 @@ export default function App() {
         {/* RIGHT: Results */}
         <div className="md:sticky md:top-6 h-fit">
           <div ref={resultsCardRef} className="rounded-lg border p-4 space-y-2 bg-white">
-            {/* Export-Button – NICHT Teil des Exports */}
-            <div className="flex justify-end">
+            {/* export buttons (not included in results-content export) */}
+            <div className="flex gap-2 justify-end">
               <button
-                onClick={downloadPNG}
+                onClick={() => exportNode(resultsContentRef.current, "ner-results.png")}
                 className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm"
               >
-                Export PNG
+                Export Results PNG
+              </button>
+              <button
+                onClick={() => exportNode(pageRef.current, "ner-full.png")}
+                className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm"
+              >
+                Export Full PNG
               </button>
             </div>
 
-            {/* Export-Inhalt */}
+            {/* content-only wrapper for clean export */}
             <div ref={resultsContentRef}>
-              {/* Tenant groß & fett (nur Text, kein 2. Feld) */}
+              {/* Tenant display */}
               {f.tenant.trim() && (
                 <div className="mb-1">
-                  <div className="text-xl font-bold">{f.tenant.trim()}</div>
+                  <span className="text-xl font-bold">Tenant: <u>{f.tenant.trim()}</u></span>
                 </div>
               )}
 
@@ -377,19 +385,16 @@ export default function App() {
                 <div className="text-right"><Money value={ -totalUnforeseen } /></div>
               </div>
 
-              {/* Total Fit Outs */}
               <p className="text-sm font-semibold text-red-500 mb-1">
                 Total Fit Out Costs: {FCUR(totalFit)}
               </p>
 
-              {/* NER 1–3 */}
               <p>1️⃣ NER incl. Rent Frees: <b>{F(ner1, 2)} €/sqm</b><Delta base={rent} val={ner1} /></p>
               <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 2)} €/sqm</b><Delta base={rent} val={ner2} /></p>
               <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b><Delta base={rent} val={ner3} /></p>
 
               {/* Charts */}
               <div className="mt-4 grid grid-cols-3 gap-6">
-                {/* Fit-Outs – Balken mit vertikalem Label */}
                 <div className="h-60 border rounded p-2 col-span-1">
                   <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
                   <ResponsiveContainer width="100%" height="100%">
@@ -405,7 +410,6 @@ export default function App() {
                   </ResponsiveContainer>
                 </div>
 
-                {/* NER + Headline */}
                 <div className="h-60 border rounded p-2 col-span-2">
                   <div className="text-sm font-bold text-center mb-1">NER vs Headline (€/sqm)</div>
                   <ResponsiveContainer width="100%" height="100%">
@@ -431,7 +435,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Final NER */}
               <p className="border-t pt-2 mt-10">
                 4️⃣ <b>Final NER</b> (incl. all above + Unforeseen): <b>{F(ner4, 2)} €/sqm</b>
                 <Delta base={rent} val={ner4} />
