@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 /* ---------- utils ---------- */
 const clamp = (n, min = 0) => (Number.isFinite(n) ? Math.max(min, n) : 0);
 const P = (v) => {
-  // tolerant parse: "1 234,56" → 1234.56
   let s = String(v ?? "").trim().replace(/\s/g, "");
   const hasDot = s.includes("."), c = (s.match(/,/g) || []).length;
   s = !hasDot && c === 1 ? s.replace(",", ".") : s.replace(/,/g, "");
@@ -95,7 +94,7 @@ function NumericField({
   );
 }
 
-/* ---------- app ---------- */
+/* ---------- app (two-column responsive layout) ---------- */
 export default function App() {
   const [f, setF] = useState({
     nla: "1000",
@@ -173,166 +172,194 @@ export default function App() {
   const ner4 = (gross - totalFit - agentFees - unforeseen) / denom; // Final NER
 
   return (
-    <div className="p-6 max-w-xl mx-auto bg-white rounded-xl shadow-md space-y-4">
-      <h2 className="text-2xl font-bold">Net Effective Rent Calculator</h2>
+    <div className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md">
+      <h2 className="text-2xl font-bold mb-4">Net Effective Rent Calculator</h2>
 
-      <div className="grid grid-cols-2 gap-4">
-        <NumericField label="NLA (sqm)" value={f.nla} onChange={S("nla")} format="2dec" step={1} />
-        <NumericField label="Add-On (%)" value={f.addon} onChange={S("addon")} format="2dec" step={0.5} />
-        <label className="block">
-          <span className="text-gray-700">GLA (sqm)</span>
-          <input
-            readOnly
-            value={F(gla, 2)}
-            className="mt-1 block w-full border rounded-md p-2 bg-gray-100 text-gray-600"
-          />
-        </label>
-        <NumericField
-          label="Headline Rent €/sqm"
-          value={f.rent}
-          onChange={S("rent")}
-          format="2dec"
-          step={0.5}
-        />
-        <NumericField
-          label="Lease Term (months)"
-          value={f.duration}
-          onChange={S("duration")}
-          format="int"
-          step={1}
-        />
-        <NumericField
-          label="Rent-Free (months)"
-          value={f.rf}
-          onChange={S("rf")}
-          format="1dec"
-          step={0.5}
-        />
-      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* LEFT: Inputs */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <NumericField label="NLA (sqm)" value={f.nla} onChange={S("nla")} format="2dec" step={1} />
+            <NumericField label="Add-On (%)" value={f.addon} onChange={S("addon")} format="2dec" step={0.5} />
 
-      {/* Fit-Out block */}
-      <div className="border rounded-md p-3">
-        <div className="flex items-center gap-4 mb-3">
-          <span className="text-gray-700 font-medium">Fit-Out Input:</span>
-          <label className="inline-flex items-center gap-2">
-            <input
-              type="radio"
-              checked={f.fitMode === "perNLA"}
-              onChange={() => S("fitMode")("perNLA")}
-            />{" "}
-            <span>€/sqm (NLA)</span>
-          </label>
-          <label className="inline-flex items-center gap-2">
-            <input
-              type="radio"
-              checked={f.fitMode === "perGLA"}
-              onChange={() => S("fitMode")("perGLA")}
-            />{" "}
-            <span>€/sqm (GLA)</span>
-          </label>
-          <label className="inline-flex items-center gap-2">
-            <input
-              type="radio"
-              checked={f.fitMode === "total"}
-              onChange={() => S("fitMode")("total")}
-            />{" "}
-            <span>Total (€)</span>
-          </label>
+            <label className="block">
+              <span className="text-gray-700">GLA (sqm)</span>
+              <input
+                readOnly
+                value={F(gla, 2)}
+                className="mt-1 block w-full border rounded-md p-2 bg-gray-100 text-gray-600"
+              />
+            </label>
+            <NumericField
+              label="Headline Rent €/sqm"
+              value={f.rent}
+              onChange={S("rent")}
+              format="2dec"
+              step={0.5}
+            />
+
+            <NumericField
+              label="Lease Term (months)"
+              value={f.duration}
+              onChange={S("duration")}
+              format="int"
+              step={1}
+            />
+            <NumericField
+              label="Rent-Free (months)"
+              value={f.rf}
+              onChange={S("rf")}
+              format="1dec"
+              step={0.5}
+            />
+          </div>
+
+          {/* Fit-Out block */}
+          <div className="border rounded-md p-3">
+            <div className="flex flex-wrap items-center gap-4 mb-3">
+              <span className="text-gray-700 font-medium">Fit-Out Input:</span>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="radio"
+                  checked={f.fitMode === "perNLA"}
+                  onChange={() => S("fitMode")("perNLA")}
+                />
+                <span>€/sqm (NLA)</span>
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="radio"
+                  checked={f.fitMode === "perGLA"}
+                  onChange={() => S("fitMode")("perGLA")}
+                />
+                <span>€/sqm (GLA)</span>
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="radio"
+                  checked={f.fitMode === "total"}
+                  onChange={() => S("fitMode")("total")}
+                />
+                <span>Total (€)</span>
+              </label>
+            </div>
+
+            <NumericField
+              label="Fit-Out €/sqm (NLA)"
+              value={f.fitPerNLA}
+              onChange={(v) => {
+                S("fitPerNLA")(v);
+                if (f.fitMode === "perNLA") {
+                  const t = P(v) * nla;
+                  S("fitTot")(String(t));
+                  S("fitPerGLA")(String(gla > 0 ? t / gla : 0));
+                }
+              }}
+              readOnly={f.fitMode !== "perNLA"}
+              format="2dec"
+              step={1}
+              suffix="€/sqm"
+            />
+            <NumericField
+              label="Fit-Out €/sqm (GLA)"
+              value={f.fitPerGLA}
+              onChange={(v) => {
+                S("fitPerGLA")(v);
+                if (f.fitMode === "perGLA") {
+                  const t = P(v) * gla;
+                  S("fitTot")(String(t));
+                  S("fitPerNLA")(String(nla > 0 ? t / nla : 0));
+                }
+              }}
+              readOnly={f.fitMode !== "perGLA"}
+              format="2dec"
+              step={1}
+              suffix="€/sqm"
+            />
+            <NumericField
+              label="Fit-Out Total (€)"
+              value={f.fitTot}
+              onChange={(v) => {
+                S("fitTot")(v);
+                if (f.fitMode === "total") {
+                  const t = P(v);
+                  S("fitPerNLA")(String(nla > 0 ? t / nla : 0));
+                  S("fitPerGLA")(String(gla > 0 ? t / gla : 0));
+                }
+              }}
+              readOnly={f.fitMode !== "total"}
+              format="2dec"
+              step={100}
+              suffix="€"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <NumericField
+              label="Agent Fees (months)"
+              value={f.agent}
+              onChange={S("agent")}
+              format="1dec"
+              step={0.5}
+            />
+            <NumericField
+              label="Unforeseen Costs (lump sum €)"
+              value={f.unforeseen}
+              onChange={S("unforeseen")}
+              format="2dec"
+              step={100}
+              suffix="€"
+            />
+          </div>
         </div>
 
-        <NumericField
-          label="Fit-Out €/sqm (NLA)"
-          value={f.fitPerNLA}
-          onChange={(v) => {
-            S("fitPerNLA")(v);
-            if (f.fitMode === "perNLA") {
-              const t = P(v) * nla;
-              S("fitTot")(String(t));
-              S("fitPerGLA")(String(gla > 0 ? t / gla : 0));
-            }
-          }}
-          readOnly={f.fitMode !== "perNLA"}
-          format="2dec"
-          step={1}
-          suffix="€/sqm"
-        />
-        <NumericField
-          label="Fit-Out €/sqm (GLA)"
-          value={f.fitPerGLA}
-          onChange={(v) => {
-            S("fitPerGLA")(v);
-            if (f.fitMode === "perGLA") {
-              const t = P(v) * gla;
-              S("fitTot")(String(t));
-              S("fitPerNLA")(String(nla > 0 ? t / nla : 0));
-            }
-          }}
-          readOnly={f.fitMode !== "perGLA"}
-          format="2dec"
-          step={1}
-          suffix="€/sqm"
-        />
-        <NumericField
-          label="Fit-Out Total (€)"
-          value={f.fitTot}
-          onChange={(v) => {
-            S("fitTot")(v);
-            if (f.fitMode === "total") {
-              const t = P(v);
-              S("fitPerNLA")(String(nla > 0 ? t / nla : 0));
-              S("fitPerGLA")(String(gla > 0 ? t / gla : 0));
-            }
-          }}
-          readOnly={f.fitMode !== "total"}
-          format="2dec"
-          step={100}
-          suffix="€"
-        />
-      </div>
+        {/* RIGHT: Results (sticky on large screens) */}
+        <div className="md:sticky md:top-6 h-fit">
+          <div className="rounded-lg border p-4 space-y-2 bg-white">
+            <p className="text-sm text-red-500 font-semibold">
+              Total Fit Out Costs: {FCUR(totalFit)}
+            </p>
+            <p>
+              <strong>Headline Rent:</strong> {F(rent, 2)} €/sqm
+            </p>
 
-      <div className="grid grid-cols-2 gap-4 mt-4">
-        <NumericField
-          label="Agent Fees (months)"
-          value={f.agent}
-          onChange={S("agent")}
-          format="1dec"
-          step={0.5}
-        />
-        <NumericField
-          label="Unforeseen Costs (lump sum €)"
-          value={f.unforeseen}
-          onChange={S("unforeseen")}
-          format="2dec"
-          step={100}
-          suffix="€"
-        />
-      </div>
+            <p>
+              <span className="inline-flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-blue-600 text-white text-xs font-bold">1</span>
+                NER incl. Rent Frees:
+              </span>{" "}
+              <b>{F(ner1, 2)} €/sqm</b>
+              <Delta base={rent} val={ner1} />
+            </p>
 
-      <div className="pt-6 space-y-2 text-left">
-        <p className="text-sm text-red-500 font-semibold">
-          Total Fit Out Costs: {FCUR(totalFit)}
-        </p>
-        <p>
-          <strong>Headline Rent:</strong> {F(rent, 2)} €/sqm
-        </p>
+            <p>
+              <span className="inline-flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-blue-600 text-white text-xs font-bold">2</span>
+                incl. Rent Frees &amp; Fit-Outs:
+              </span>{" "}
+              <b>{F(ner2, 2)} €/sqm</b>
+              <Delta base={rent} val={ner2} />
+            </p>
 
-        <p>
-          1️⃣ NER incl. Rent Frees: <b>{F(ner1, 2)} €/sqm</b>
-          <Delta base={rent} val={ner1} />
-        </p>
-        <p>
-          2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 2)} €/sqm</b>
-          <Delta base={rent} val={ner2} />
-        </p>
-        <p>
-          3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b>
-          <Delta base={rent} val={ner3} />
-        </p>
-        <p className="border-t pt-2">
-          4️⃣ <b>Final NER</b> (incl. all above + Unforeseen):{" "}
-          <b>{F(ner4, 2)} €/sqm</b>
-          <Delta base={rent} val={ner4} />
-        </p>
+            <p>
+              <span className="inline-flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-blue-600 text-white text-xs font-bold">3</span>
+                incl. Rent Frees, Fit-Outs &amp; Agent Fees:
+              </span>{" "}
+              <b>{F(ner3, 2)} €/sqm</b>
+              <Delta base={rent} val={ner3} />
+            </p>
+
+            <p className="border-t pt-2">
+              <span className="inline-flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-blue-600 text-white text-xs font-bold">4</span>
+                <b>Final NER</b> (incl. all above + Unforeseen):
+              </span>{" "}
+              <b>{F(ner4, 2)} €/sqm</b>
+              <Delta base={rent} val={ner4} />
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
