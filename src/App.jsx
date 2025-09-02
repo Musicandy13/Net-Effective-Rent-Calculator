@@ -171,12 +171,12 @@ function BarsChart({ data, isExporting }) {
         data={data}
         barCategoryGap={18}
         barGap={4}
-        margin={{ top: 28, right: 6, bottom: 28, left: 6 }}   // tiefer
+        margin={{ top: 28, right: 6, bottom: 36, left: 6 }}   // tiefer
       >
         <XAxis
           dataKey="name"
-          height={30}                                          // gleiche Achsenhöhe
-          tick={{ fontSize: 12, fontWeight: 700 }}            // fette Legende (Headline / NER 1 ...)
+          height={34}                                          // gleiche Achsenhöhe
+          tick={{ fontSize: 12, fontWeight: 700 }}            // fette Tick-Labels
         />
         <YAxis hide />
         <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
@@ -206,12 +206,12 @@ function WaterfallChart({ data, isExporting }) {
         data={data}
         barCategoryGap={8}
         barGap={6}
-        margin={{ top: 44, right: 12, bottom: 28, left: 12 }} // tiefer
+        margin={{ top: 44, right: 12, bottom: 36, left: 12 }} // tiefer
       >
         <XAxis
           dataKey="name"
           interval={0}
-          height={30}                                         // gleiche Achsenhöhe
+          height={34}                                         // gleiche Achsenhöhe
           tick={{ fontSize: 12, fontWeight: 700 }}            // fette Legende (RF/FO/AF/UC)
         />
         <YAxis hide domain={["dataMin - 2", "dataMax + 8"]} />
@@ -487,21 +487,20 @@ export default function App() {
 
                 {/* Charts */}
                 <div className="mt-4 grid grid-cols-3 gap-6">
-                  {/* Fit-Outs – OHNE Rahmen */}
+                  {/* Fit-Outs – ohne Rahmen, extra tief */}
                   <div className="h-60 p-2 col-span-1">
                     <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={[{ name: "Fit-Outs", eur: totalFit }]}
-                        margin={{ top: 8, right: 0, bottom: 28, left: 0 }}
+                        margin={{ top: 8, right: 0, bottom: 44, left: 0 }}
                       >
-                        {/* unsichtbare X-Achse mit Höhe -> Baseline-Ausrichtung */}
                         <XAxis
                           dataKey="name"
                           tick={false}
                           axisLine={false}
                           tickLine={false}
-                          height={30}
+                          height={40}
                         />
                         <YAxis hide />
                         <Tooltip formatter={(v) => FCUR0(v)} />
@@ -513,7 +512,7 @@ export default function App() {
                     </ResponsiveContainer>
                   </div>
 
-                  {/* Bars / Waterfall – OHNE Rahmen */}
+                  {/* Bars / Waterfall – ohne Rahmen */}
                   <div className="h-64 p-2 col-span-2">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-sm font-bold">
