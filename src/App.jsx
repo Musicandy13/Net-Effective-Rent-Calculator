@@ -135,29 +135,30 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   );
 };
 
-/* ---------- Waterfall label (HIGH above; no −0.00) ---------- */
-const WFLabel = ({ x, y, width, height, value, payload }) => {
-  // place labels much higher
+/* ---------- Waterfall label factory (HIGH above; no −0.00; totals green/conditional) ---------- */
+const makeWFLabel = (data) => (props) => {
+  const { x, y, width, index, value } = props || {};
+  const d = Array.isArray(data) && Number.isInteger(index) ? data[index] : {};
   const cx = (Number.isFinite(x) ? x : 0) + (Number.isFinite(width) ? width / 2 : 0);
-  const topOffset = 26; // raise label above the bar
-  const yy = (Number.isFinite(y) ? y : 0) - topOffset;
+  const yy = (Number.isFinite(y) ? y : 0) - 30; // higher above bars
 
-  // robust rounding to avoid -0.00
-  const round2 = (n) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
-  const v = round2(value);
+  // avoid displaying -0.00
+  const v2 = Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
 
-  if (payload?.isTotal) {
-    // Headline / Final NER: show rent value in green
+  if (d?.isTotal) {
+    const isPos = v2 >= 0;
+    const color = isPos ? "#16a34a" : "#dc2626";
+    const sign = isPos ? "" : "−";
+    const abs = Math.abs(v2);
     return (
-      <text x={cx} y={yy} textAnchor="middle" fill="#16a34a" fontSize={12} fontWeight="800">
-        {F(Math.abs(v), 2)}
+      <text x={cx} y={yy} textAnchor="middle" fill={color} fontSize={12} fontWeight="800">
+        {sign}{F(abs, 2)}
       </text>
     );
   }
 
-  const abs = Math.abs(v);
+  const abs = Math.abs(v2);
   if (abs < 0.005) return null; // hide micro values
-
   return (
     <text x={cx} y={yy} textAnchor="middle" fill="#dc2626" fontSize={12} fontWeight="800">
       −{F(abs, 2)}
@@ -205,16 +206,17 @@ function WaterfallChart({ data, isExporting }) {
         data={data}
         barCategoryGap={18}
         barGap={4}
-        margin={{ top: 48, right: 12, bottom: 28, left: 12 }} // extra headroom for labels
+        // more space above labels; less unused space below
+        margin={{ top: 44, right: 12, bottom: 10, left: 12 }}
       >
         <XAxis
           dataKey="name"
           interval={0}
           height={26}
-          tick={{ fontSize: 12, fontWeight: 700 }} // bold RF/FO/AF/UC
+          tick={{ fontSize: 12, fontWeight: 700 }}  // bold RF/FO/AF/UC
         />
-        {/* generous domain so labels never clip */}
-        <YAxis hide domain={["dataMin - 3", "dataMax + 8"]} />
+        {/* generous domain to prevent clipping */}
+        <YAxis hide domain={["dataMin - 2", "dataMax + 10"]} />
         <Tooltip
           formatter={(val, _n, ctx) => {
             const p = ctx?.payload || {};
@@ -223,11 +225,11 @@ function WaterfallChart({ data, isExporting }) {
           }}
         />
         <ReferenceLine y={0} />
-        {/* Base (invisible) */}
+        {/* Invisible base */}
         <Bar dataKey="base" stackId="wf" fill="rgba(0,0,0,0)" />
-        {/* Steps/totals */}
+        {/* Visible delta */}
         <Bar dataKey="delta" stackId="wf" isAnimationActive={!isExporting}>
-          <LabelList dataKey="delta" content={<WFLabel />} />
+          <LabelList dataKey="delta" content={makeWFLabel(data)} />
           {data.map((d, i) => (
             <Cell key={i} fill={d.isTotal ? "#16a34a" : "#dc2626"} />
           ))}
