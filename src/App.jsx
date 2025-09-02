@@ -207,12 +207,12 @@ function WaterfallChart({ data, isExporting }) {
         data={data}
         barCategoryGap={18}
         barGap={4}
-        margin={{ top: 44, right: 12, bottom: 2, left: 12 }} // ↓ align baseline with Fit-Outs
+        margin={{ top: 44, right: 12, bottom: 14, left: 12 }} // ↓ align baseline with Fit-Outs
       >
         <XAxis
           dataKey="name"
           interval={0}
-          height={16}
+          height={22}
           tick={{ fontSize: 12, fontWeight: 700 }}          // bold RF/FO/AF/UC
         />
         <YAxis hide domain={["dataMin - 2", "dataMax + 10"]} />
