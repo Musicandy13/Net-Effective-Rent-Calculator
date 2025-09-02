@@ -94,7 +94,7 @@ function NumericField({
   );
 }
 
-/* ---------- chart labels (Bars: % above, €/sqm inside) ---------- */
+/* ---------- chart labels ---------- */
 const PercentLabel = ({ x, y, width, value }) => {
   if (!Number.isFinite(value)) return null;
   const cx = x + width / 2;
@@ -135,12 +135,12 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   );
 };
 
-/* ---------- Waterfall labels ---------- */
+/* ---------- Waterfall label ---------- */
 const makeWFLabel = (data) => (props) => {
   const { x, y, width, index, value } = props || {};
   const d = Array.isArray(data) && Number.isInteger(index) ? data[index] : {};
   const cx = (Number.isFinite(x) ? x : 0) + (Number.isFinite(width) ? width / 2 : 0);
-  const yy = (Number.isFinite(y) ? y : 0) - 30; // hoch über den Balken
+  const yy = (Number.isFinite(y) ? y : 0) - 30;
   const v2 = Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
 
   if (d?.isTotal) {
@@ -171,13 +171,12 @@ function BarsChart({ data, isExporting }) {
         data={data}
         barCategoryGap={18}
         barGap={4}
-        // ↓ tieferer Fuß: Baseline weiter unten
-        margin={{ top: 28, right: 6, bottom: 22, left: 6 }}
+        margin={{ top: 28, right: 6, bottom: 28, left: 6 }}   // tiefer
       >
         <XAxis
           dataKey="name"
-          height={26}
-          tick={{ fontSize: 12, fontWeight: 700 }} // fette Tick-Labels
+          height={30}                                          // gleiche Achsenhöhe
+          tick={{ fontSize: 12, fontWeight: 700 }}            // fette Legende (Headline / NER 1 ...)
         />
         <YAxis hide />
         <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
@@ -205,19 +204,16 @@ function WaterfallChart({ data, isExporting }) {
       <BarChart
         key="waterfall"
         data={data}
-        // ↓ breiter & „massiver“
         barCategoryGap={8}
         barGap={6}
-        // ↓ tieferer Fuß
-        margin={{ top: 44, right: 12, bottom: 22, left: 12 }}
+        margin={{ top: 44, right: 12, bottom: 28, left: 12 }} // tiefer
       >
         <XAxis
           dataKey="name"
           interval={0}
-          height={26}
-          tick={{ fontSize: 12, fontWeight: 700 }}
+          height={30}                                         // gleiche Achsenhöhe
+          tick={{ fontSize: 12, fontWeight: 700 }}            // fette Legende (RF/FO/AF/UC)
         />
-        {/* straffer, damit die Säulen höher wirken, aber Platz für Labels bleibt */}
         <YAxis hide domain={["dataMin - 2", "dataMax + 8"]} />
         <Tooltip
           formatter={(val, _n, ctx) => {
@@ -330,7 +326,7 @@ export default function App() {
   const dAF = safe(ner3 - ner2);
   const dUC = safe(ner4 - ner3);
 
-  // Build wfData sequentially (keine Side-Effects im Literal)
+  // Waterfall-Daten sequentiell
   let cur = safe(rent);
   const wfData = [];
   wfData.push({ name: "Headline",   base: 0,   delta: cur,  isTotal: true  });
@@ -453,7 +449,7 @@ export default function App() {
           {/* RIGHT: Results */}
           <div className="md:sticky md:top-6 h-fit">
             <div className="rounded-lg border p-4 space-y-2 bg-white">
-              {/* Export-Buttons */}
+              {/* Export */}
               <div className="flex gap-2 justify-end">
                 <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">
                   Export Results PNG
@@ -463,7 +459,6 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Inhalte (ohne Buttons) */}
               <div ref={resultsContentRef}>
                 {f.tenant.trim() && (
                   <div className="mb-1">
@@ -492,12 +487,22 @@ export default function App() {
 
                 {/* Charts */}
                 <div className="mt-4 grid grid-cols-3 gap-6">
-                  {/* Fit-Outs */}
-                  <div className="h-60 border rounded p-2 col-span-1">
+                  {/* Fit-Outs – OHNE Rahmen */}
+                  <div className="h-60 p-2 col-span-1">
                     <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={[{ name: "Fit-Outs", eur: totalFit }]}>
-                        <XAxis dataKey="name" hide />
+                      <BarChart
+                        data={[{ name: "Fit-Outs", eur: totalFit }]}
+                        margin={{ top: 8, right: 0, bottom: 28, left: 0 }}
+                      >
+                        {/* unsichtbare X-Achse mit Höhe -> Baseline-Ausrichtung */}
+                        <XAxis
+                          dataKey="name"
+                          tick={false}
+                          axisLine={false}
+                          tickLine={false}
+                          height={30}
+                        />
                         <YAxis hide />
                         <Tooltip formatter={(v) => FCUR0(v)} />
                         <ReferenceLine y={0} />
@@ -508,8 +513,8 @@ export default function App() {
                     </ResponsiveContainer>
                   </div>
 
-                  {/* Toggle + Chart (Bars/Waterfall) */}
-                  <div className="h-64 border rounded p-2 col-span-2">
+                  {/* Bars / Waterfall – OHNE Rahmen */}
+                  <div className="h-64 p-2 col-span-2">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-sm font-bold">
                         <span>{viewMode === "bars" ? "NER vs Headline (€/sqm)" : "Waterfall (€/sqm)"}</span>
