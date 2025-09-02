@@ -55,7 +55,7 @@ function Delta({ base, val }) {
   );
 }
 
-/* ---------- input ---------- */
+/* ---------- inputs ---------- */
 function NumericField({
   label, value, onChange, format = "2dec", step = 1, min = 0,
   readOnly = false, onCommit, suffix,
@@ -134,23 +134,21 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   );
 };
 
-/* Waterfall-Labels – ALLES OBERHALB:
-   – Headline/Final: grün, zeigen €/sqm
-   – RF/FO/AF/UC: rot, zeigen −ABS(Δ) €/sqm  */
-const WFLabel = ({ x, y, width, height, value, payload }) => {
-  const cx = x + width / 2;
+/* ---------- Waterfall custom label (alles OBERHALB) ---------- */
+const WFLabel = (props) => {
+  const { x, y, width, payload } = props;
+  const cx = x + (width ?? 0) / 2;
 
-  if (payload?.isTotalStart || payload?.isTotalEnd) {
-    // Totals (Headline / Final)
+  if (payload?.kind === "total") {
+    // Headline / Final: grüne Miete
     return (
       <text x={cx} y={y - 6} textAnchor="middle" fill="#16a34a" fontWeight="800" fontSize={12}>
-        {F(safe(payload.totalVal), 2)}
+        {F(safe(payload.value), 2)}
       </text>
     );
   }
-
-  // Steps (Abzüge)
-  const abs = Math.abs(safe(payload.stepDelta));
+  // Steps: rote Abzüge (−ABS(Δ))
+  const abs = Math.abs(safe(payload.delta));
   return (
     <text x={cx} y={y - 6} textAnchor="middle" fill="#dc2626" fontWeight="800" fontSize={12}>
       −{F(abs, 2)}
@@ -188,7 +186,6 @@ function WaterfallChart({ data, isExporting }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
-        key="waterfall"
         data={data}
         barCategoryGap={18}
         barGap={4}
@@ -197,31 +194,21 @@ function WaterfallChart({ data, isExporting }) {
         <XAxis dataKey="name" interval={0} height={24} tick={{ fontSize: 12 }} />
         <YAxis hide />
         <Tooltip
-          formatter={(v, n, { payload }) => {
-            if (payload?.isTotalStart || payload?.isTotalEnd) {
-              return [`${F(payload.totalVal, 2)} €/sqm`, "Rent"];
+          formatter={(val, _n, { payload }) => {
+            if (payload?.kind === "total") {
+              return [`${F(safe(payload.value), 2)} €/sqm`, "Rent"];
             }
-            // Steps als reine Abzüge
-            return [`−${F(Math.abs(payload.stepDelta), 2)} €/sqm`, "Δ"];
+            return [`−${F(Math.abs(safe(payload.delta)), 2)} €/sqm`, "Δ"];
           }}
         />
         <ReferenceLine y={0} />
-
-        {/* Unsichtbarer Sockel */}
+        {/* unsichtbarer Sockel */}
         <Bar dataKey="base" stackId="wf" fill="rgba(0,0,0,0)" />
-
-        {/* Sichtbare Säulen (Totals & Steps) */}
+        {/* sichtbarer Anteil */}
         <Bar dataKey="delta" stackId="wf" isAnimationActive={!isExporting}>
           <LabelList content={<WFLabel />} />
           {data.map((d, i) => (
-            <Cell
-              key={i}
-              fill={
-                d.isTotalStart || d.isTotalEnd
-                  ? "#16a34a" // grün für Headline & Final
-                  : "#dc2626" // rot für Abzüge
-              }
-            />
+            <Cell key={i} fill={d.kind === "total" ? "#16a34a" : "#dc2626"} />
           ))}
         </Bar>
       </BarChart>
@@ -247,7 +234,7 @@ export default function App() {
   });
   const S = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
   const [isExporting, setIsExporting] = useState(false);
-  const [viewMode, setViewMode] = useState("bars");
+  const [viewMode, setViewMode] = useState("bars"); // 'bars' | 'waterfall'
 
   /* parsed */
   const nla = clamp(P(f.nla));
@@ -306,39 +293,40 @@ export default function App() {
   const totalAgentFees = agentFees;
   const totalUnforeseen = unforeseen;
 
-  /* charts data */
-  const FIT_OUT_COLOR = "#c2410c";
+  /* charts data (Bars) */
+  const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"];
   const nerBars = [
     { label: "Headline", val: rent, pct: null, color: "#065f46" },
-    { label: "NER 1", val: ner1, pct: rent > 0 ? ((ner1 - rent) / rent) * 100 : null, color: "#1e3a8a" },
-    { label: "NER 2", val: ner2, pct: rent > 0 ? ((ner2 - rent) / rent) * 100 : null, color: "#2563eb" },
-    { label: "NER 3", val: ner3, pct: rent > 0 ? ((ner3 - rent) / rent) * 100 : null, color: "#3b82f6" },
-    { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: "#60a5fa" },
+    { label: "NER 1", val: ner1, pct: rent > 0 ? ((ner1 - rent) / rent) * 100 : null, color: NER_COLORS[0] },
+    { label: "NER 2", val: ner2, pct: rent > 0 ? ((ner2 - rent) / rent) * 100 : null, color: NER_COLORS[1] },
+    { label: "NER 3", val: ner3, pct: rent > 0 ? ((ner3 - rent) / rent) * 100 : null, color: NER_COLORS[2] },
+    { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
   ].map(d => ({ name: d.label, sqm: safe(d.val), pct: Number.isFinite(d.pct) ? d.pct : null, color: d.color }));
 
+  /* charts data (Fit-Out monolith) */
   const chartFitOutData = [{ name: "Fit-Outs", eur: totalFit }];
 
-  /* Waterfall – Totals grün, Steps rot; Labels oben */
-  const dRF  = safe(ner1 - rent); // negativ
-  const dFO  = safe(ner2 - ner1); // negativ
-  const dAF  = safe(ner3 - ner2); // negativ
-  const dUC  = safe(ner4 - ner3); // negativ (falls >0 Kosten)
+  /* Waterfall: Totals grün, Steps rot; Labels oben; kurze Ticks */
+  const dRF = safe(ner1 - rent);
+  const dFO = safe(ner2 - ner1);
+  const dAF = safe(ner3 - ner2);
+  const dUC = safe(ner4 - ner3);
 
-  let cum = safe(rent);
+  let c = safe(rent); // aktueller Mietwert
   const wfData = [
-    { name: "Headline", base: 0, delta: rent, isTotalStart: true, isTotalEnd: false, totalVal: rent },
-    { name: "RF",       base: cum,         delta: dRF, isTotalStart: false, isTotalEnd: false, stepDelta: dRF },  cum += dRF,
-    { name: "FO",       base: cum,         delta: dFO, isTotalStart: false, isTotalEnd: false, stepDelta: dFO },  cum += dFO,
-    { name: "AF",       base: cum,         delta: dAF, isTotalStart: false, isTotalEnd: false, stepDelta: dAF },  cum += dAF,
-    { name: "UC",       base: cum,         delta: dUC, isTotalStart: false, isTotalEnd: false, stepDelta: dUC },  cum += dUC,
-    { name: "Final NER",base: 0, delta: cum, isTotalStart: false, isTotalEnd: true, totalVal: ner4 },
-  ].map(d => ({ ...d, base: safe(d.base), delta: safe(d.delta) }));
+    { name: "Headline", base: 0, delta: c,     kind: "total", value: c },
+    { name: "RF",       base: c, delta: dRF,   kind: "step" }, c += dRF,
+    { name: "FO",       base: c, delta: dFO,   kind: "step" }, c += dFO,
+    { name: "AF",       base: c, delta: dAF,   kind: "step" }, c += dAF,
+    { name: "UC",       base: c, delta: dUC,   kind: "step" }, c += dUC,
+    { name: "Final NER",base: 0, delta: c,     kind: "total", value: c },
+  ].filter((d) => typeof d === "object") // sicherheitshalber – extrahiert nur die Objekte
+   .map(d => ({ ...d, base: safe(d.base), delta: safe(d.delta) }));
 
   /* export refs */
   const pageRef = useRef(null);
   const resultsContentRef = useRef(null);
 
-  /* ---------- EXPORTS ---------- */
   const exportNode = async (node, filename) => {
     if (!node) return;
     try {
@@ -362,6 +350,8 @@ export default function App() {
       a.href = dataUrl;
       a.download = filename;
       a.click();
+    } catch (e) {
+      console.error("PNG export failed", e);
     } finally {
       setIsExporting(false);
     }
@@ -446,7 +436,7 @@ export default function App() {
           {/* RIGHT */}
           <div className="md:sticky md:top-6 h-fit">
             <div className="rounded-lg border p-4 space-y-2 bg-white">
-              {/* Export */}
+              {/* Export-Buttons */}
               <div className="flex gap-2 justify-end">
                 <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">
                   Export Results PNG
@@ -456,7 +446,14 @@ export default function App() {
                 </button>
               </div>
 
+              {/* Inhalte */}
               <div ref={resultsContentRef}>
+                {f.tenant.trim() && (
+                  <div className="mb-1">
+                    <span className="text-xl font-bold">Tenant: <u>{f.tenant.trim()}</u></span>
+                  </div>
+                )}
+
                 <p className="mb-1">
                   <strong className="text-lg">Headline Rent:</strong> <strong>{F(rent, 2)} €/sqm</strong>
                 </p>
@@ -478,6 +475,7 @@ export default function App() {
 
                 {/* Charts */}
                 <div className="mt-4 grid grid-cols-3 gap-6">
+                  {/* Fit-Outs */}
                   <div className="h-60 border rounded p-2 col-span-1">
                     <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
                     <ResponsiveContainer width="100%" height="100%">
@@ -486,18 +484,34 @@ export default function App() {
                         <YAxis hide />
                         <Tooltip formatter={(v) => FCUR0(v)} />
                         <ReferenceLine y={0} />
-                        <Bar dataKey="eur" fill={FIT_OUT_COLOR} barSize={40}>
+                        <Bar dataKey="eur" fill="#c2410c" barSize={40} isAnimationActive={!isExporting}>
                           <LabelList content={<VerticalMoneyLabel0 />} />
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
 
+                  {/* Toggle + Chart */}
                   <div className="h-60 border rounded p-2 col-span-2">
                     <div className="flex items-center justify-between mb-1">
-                      <div className="text-sm font-bold">Waterfall (€/sqm)</div>
+                      <div className="text-sm font-bold">
+                        <span>{viewMode === "bars" ? "NER vs Headline (€/sqm)" : "Waterfall (€/sqm)"}</span>
+                      </div>
+                      <div className="text-xs">
+                        <label className="mr-2">
+                          <input type="radio" checked={viewMode === "bars"} onChange={() => setViewMode("bars")} /> Bars
+                        </label>
+                        <label>
+                          <input type="radio" checked={viewMode === "waterfall"} onChange={() => setViewMode("waterfall")} /> Waterfall
+                        </label>
+                      </div>
                     </div>
-                    <WaterfallChart data={wfData} isExporting={isExporting} />
+
+                    {viewMode === "bars" ? (
+                      <BarsChart data={nerBars} isExporting={isExporting} />
+                    ) : (
+                      <WaterfallChart data={wfData} isExporting={isExporting} />
+                    )}
                   </div>
                 </div>
 
