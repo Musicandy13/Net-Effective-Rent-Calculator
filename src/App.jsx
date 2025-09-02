@@ -94,14 +94,14 @@ function NumericField({
   );
 }
 
-/* ---------- chart labels ---------- */
+/* ---------- chart labels (positions tuned) ---------- */
 const PercentLabel = ({ x, y, width, value }) => {
   if (!Number.isFinite(value)) return null;
   const cx = (Number.isFinite(x) ? x : 0) + (Number.isFinite(width) ? width / 2 : 0);
   const fill = value < 0 ? "#dc2626" : "#16a34a";
   const sign = value > 0 ? "+" : "";
   return (
-    <text x={cx} y={(Number.isFinite(y) ? y : 0) - 6} textAnchor="middle" fill={fill} fontSize={12} fontWeight="700">
+    <text x={cx} y={(Number.isFinite(y) ? y : 0) - 22} textAnchor="middle" fill={fill} fontSize={12} fontWeight="700">
       {sign}{F(value, 2)}%
     </text>
   );
@@ -135,14 +135,13 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   );
 };
 
-/* ---------- Waterfall label: ALLES OBERHALB, defensiv ---------- */
+/* Waterfall labels (all above) */
 const WFLabel = (props) => {
   const { x, y, width, payload } = props || {};
   const cx = (Number.isFinite(x) ? x : 0) + (Number.isFinite(width) ? width / 2 : 0);
-  const yy = (Number.isFinite(y) ? y : 0) - 6;
+  const yy = (Number.isFinite(y) ? y : 0) - 10; // tiny extra clearance
 
   if (payload && payload.isTotal) {
-    // Totals: grüne Miete
     return (
       <text x={cx} y={yy} textAnchor="middle" fill="#16a34a" fontWeight="800" fontSize={12}>
         {F(safe(payload.delta), 2)}
@@ -151,7 +150,6 @@ const WFLabel = (props) => {
   }
   if (!payload) return null;
 
-  // Steps: rote Abzüge „−ABS(Δ)“
   const abs = Math.abs(safe(payload.delta));
   return (
     <text x={cx} y={yy} textAnchor="middle" fill="#dc2626" fontWeight="800" fontSize={12}>
@@ -164,14 +162,21 @@ const WFLabel = (props) => {
 function BarsChart({ data, isExporting }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart key="bars" data={data} barCategoryGap={18} barGap={4} margin={{ top: 6, right: 6, bottom: 6, left: 6 }}>
+      <BarChart
+        key="bars"
+        data={data}
+        barCategoryGap={18}
+        barGap={4}
+        margin={{ top: 28, right: 6, bottom: 6, left: 6 }}   // more top headroom
+      >
         <XAxis dataKey="name" />
-        <YAxis hide />
+        <YAxis hide domain={["dataMin - 2", "dataMax + 2"]} />
         <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
         <ReferenceLine y={0} />
         <Bar dataKey="sqm" barSize={36} isAnimationActive={!isExporting}>
-          <LabelList dataKey="sqm" content={<BarNumberLabel />} />
+          {/* draw % first (higher), then €/sqm so €/sqm sits on top */}
           <LabelList dataKey="pct" content={<PercentLabel />} />
+          <LabelList dataKey="sqm" content={<BarNumberLabel />} />
           {data.map((e, i) => (
             <Cell
               key={i}
@@ -194,10 +199,10 @@ function WaterfallChart({ data, isExporting }) {
         data={data}
         barCategoryGap={18}
         barGap={4}
-        margin={{ top: 8, right: 8, bottom: 24, left: 8 }}
+        margin={{ top: 32, right: 8, bottom: 24, left: 8 }} // more top headroom
       >
         <XAxis dataKey="name" interval={0} height={24} tick={{ fontSize: 12 }} />
-        <YAxis hide />
+        <YAxis hide domain={["dataMin - 2", "dataMax + 2"]} />
         <Tooltip
           formatter={(val, _n, ctx) => {
             const p = ctx && ctx.payload ? ctx.payload : {};
@@ -206,9 +211,9 @@ function WaterfallChart({ data, isExporting }) {
           }}
         />
         <ReferenceLine y={0} />
-        {/* Sockel (unsichtbar) */}
+        {/* Invisible base */}
         <Bar dataKey="base" stackId="wf" fill="rgba(0,0,0,0)" />
-        {/* Sichtbare Säulen */}
+        {/* Visible part */}
         <Bar dataKey="delta" stackId="wf" isAnimationActive={!isExporting}>
           <LabelList content={<WFLabel />} />
           {data.map((d, i) => (
@@ -279,7 +284,7 @@ export default function App() {
       if (Math.abs(n - nNLA) > 1e-9) S("fitPerNLA")(String(n));
       if (Math.abs(g - nGLA) > 1e-9) S("fitPerGLA")(String(g));
     }
-  }, [f.fitMode, f.nla, f.addon, f.fitPerNLA, f.fitPerGLA, f.fitTot, S, nla, gla]);
+  }, [f.fitMode, f.nla, f.addon, f.fitPerNLA, f.fitPerGLA, f.fitTot]);
 
   const totalFit =
     f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
@@ -297,7 +302,7 @@ export default function App() {
   const totalAgentFees = agentFees;
   const totalUnforeseen = unforeseen;
 
-  /* Bars chart data */
+  /* Bars data */
   const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"];
   const nerBars = [
     { label: "Headline", val: rent, pct: null, color: "#065f46" },
@@ -307,7 +312,7 @@ export default function App() {
     { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
   ].map(d => ({ name: d.label, sqm: safe(d.val), pct: Number.isFinite(d.pct) ? d.pct : null, color: d.color }));
 
-  /* Waterfall data – sequenziell, sicher */
+  /* Waterfall data – sequenziell & robust */
   const dRF = safe(ner1 - rent);
   const dFO = safe(ner2 - ner1);
   const dAF = safe(ner3 - ner2);
@@ -322,16 +327,6 @@ export default function App() {
   wfData.push({ name: "UC",         base: c,    delta: dUC,  isTotal: false }); c += dUC;
   wfData.push({ name: "Final NER",  base: 0,    delta: c,    isTotal: true  });
 
-  // Nur gültige Werte durchlassen
-  const wfDataSafe = wfData
-    .map(d => ({
-      ...d,
-      base: Number.isFinite(d.base) ? d.base : 0,
-      delta: Number.isFinite(d.delta) ? d.delta : 0,
-      name: d.name || "",
-    }));
-
-  /* export refs */
   const pageRef = useRef(null);
   const resultsContentRef = useRef(null);
 
@@ -499,7 +494,7 @@ export default function App() {
                     </ResponsiveContainer>
                   </div>
 
-                  {/* Toggle + Chart */}
+                  {/* Bars / Waterfall */}
                   <div className="h-60 border rounded p-2 col-span-2">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-sm font-bold">
@@ -518,7 +513,7 @@ export default function App() {
                     {viewMode === "bars" ? (
                       <BarsChart data={nerBars} isExporting={isExporting} />
                     ) : (
-                      <WaterfallChart data={wfDataSafe} isExporting={isExporting} />
+                      <WaterfallChart data={wfData} isExporting={isExporting} />
                     )}
                   </div>
                 </div>
