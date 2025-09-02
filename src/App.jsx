@@ -115,15 +115,27 @@ const BarNumberLabel = ({ x, y, width, height, value }) => {
     </text>
   );
 };
+// Nur diese Komponente anfassen
 const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   if (value == null) return null;
-  const cx = x + width / 2, cy = y + height / 2;
+  const cx = x + width / 2;
+  const cy = y + height / 2;
   return (
-    <text x={cx} y={cy} transform={`rotate(-90, ${cx}, ${cy})`} textAnchor="middle" fill="#ffffff" fontSize={16} fontWeight="800">
+    <text
+      x={cx}
+      y={cy}
+      transform={`rotate(-90, ${cx}, ${cy})`}
+      textAnchor="middle"
+      dominantBaseline="middle"   // <— wichtig für vertikale Zentrierung
+      fill="#ffffff"
+      fontSize={16}
+      fontWeight="800"
+    >
       {FCUR0(value)}
     </text>
   );
 };
+
 
 /* ---------- App ---------- */
 export default function App() {
