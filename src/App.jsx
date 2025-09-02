@@ -135,22 +135,21 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   );
 };
 
-/* ---------- Waterfall label (high; −0.00 avoided; totals green if ≥0) ---------- */
+/* ---------- Waterfall labels ---------- */
 const makeWFLabel = (data) => (props) => {
   const { x, y, width, index, value } = props || {};
   const d = Array.isArray(data) && Number.isInteger(index) ? data[index] : {};
   const cx = (Number.isFinite(x) ? x : 0) + (Number.isFinite(width) ? width / 2 : 0);
-  const yy = (Number.isFinite(y) ? y : 0) - 30;
+  const yy = (Number.isFinite(y) ? y : 0) - 30; // hoch über den Balken
   const v2 = Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
 
   if (d?.isTotal) {
     const isPos = v2 >= 0;
     const color = isPos ? "#16a34a" : "#dc2626";
     const sign = isPos ? "" : "−";
-    const abs = Math.abs(v2);
     return (
       <text x={cx} y={yy} textAnchor="middle" fill={color} fontSize={12} fontWeight="800">
-        {sign}{F(abs, 2)}
+        {sign}{F(Math.abs(v2), 2)}
       </text>
     );
   }
@@ -172,12 +171,13 @@ function BarsChart({ data, isExporting }) {
         data={data}
         barCategoryGap={18}
         barGap={4}
-        margin={{ top: 28, right: 6, bottom: 2, left: 6 }}  // ↓ align baseline with Fit-Outs
+        // ↓ tieferer Fuß: Baseline weiter unten
+        margin={{ top: 28, right: 6, bottom: 22, left: 6 }}
       >
         <XAxis
           dataKey="name"
-          height={16}
-          tick={{ fontSize: 12, fontWeight: 700 }}          // bold ticks (Headline, NER 1, ...)
+          height={26}
+          tick={{ fontSize: 12, fontWeight: 700 }} // fette Tick-Labels
         />
         <YAxis hide />
         <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
@@ -205,17 +205,20 @@ function WaterfallChart({ data, isExporting }) {
       <BarChart
         key="waterfall"
         data={data}
-        barCategoryGap={18}
-        barGap={4}
-        margin={{ top: 44, right: 12, bottom: 14, left: 12 }} // ↓ align baseline with Fit-Outs
+        // ↓ breiter & „massiver“
+        barCategoryGap={8}
+        barGap={6}
+        // ↓ tieferer Fuß
+        margin={{ top: 44, right: 12, bottom: 22, left: 12 }}
       >
         <XAxis
           dataKey="name"
           interval={0}
-          height={22}
-          tick={{ fontSize: 12, fontWeight: 700 }}          // bold RF/FO/AF/UC
+          height={26}
+          tick={{ fontSize: 12, fontWeight: 700 }}
         />
-        <YAxis hide domain={["dataMin - 2", "dataMax + 10"]} />
+        {/* straffer, damit die Säulen höher wirken, aber Platz für Labels bleibt */}
+        <YAxis hide domain={["dataMin - 2", "dataMax + 8"]} />
         <Tooltip
           formatter={(val, _n, ctx) => {
             const p = ctx?.payload || {};
@@ -225,7 +228,7 @@ function WaterfallChart({ data, isExporting }) {
         />
         <ReferenceLine y={0} />
         <Bar dataKey="base" stackId="wf" fill="rgba(0,0,0,0)" />
-        <Bar dataKey="delta" stackId="wf" isAnimationActive={!isExporting}>
+        <Bar dataKey="delta" stackId="wf" barSize={44} isAnimationActive={!isExporting}>
           <LabelList dataKey="delta" content={makeWFLabel(data)} />
           {data.map((d, i) => (
             <Cell key={i} fill={d.isTotal ? "#16a34a" : "#dc2626"} />
@@ -242,19 +245,19 @@ export default function App() {
     tenant: "",
     nla: "1000",
     addon: "5.00",
-    rent: "15.00",
+    rent: "46.00",
     duration: "60",
-    rf: "7.0",
+    rf: "4.0",
     agent: "2.0",
     fitMode: "perNLA",
-    fitPerNLA: "150.00",
+    fitPerNLA: "300.00",
     fitPerGLA: "",
-    fitTot: "150000.00",
+    fitTot: "300000.00",
     unforeseen: "0",
   });
   const S = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
   const [isExporting, setIsExporting] = useState(false);
-  const [viewMode, setViewMode] = useState("bars"); // 'bars' | 'waterfall'
+  const [viewMode, setViewMode] = useState("bars");
 
   /* parsed */
   const nla = clamp(P(f.nla));
@@ -297,9 +300,7 @@ export default function App() {
     }
   }, [f.fitMode, f.nla, f.addon, f.fitPerNLA, f.fitPerGLA, f.fitTot]);
 
-  const totalFit =
-    f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
-
+  const totalFit = f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
   const agentFees = agent * rent * gla;
   const denom = Math.max(1e-9, duration * gla);
 
@@ -329,7 +330,7 @@ export default function App() {
   const dAF = safe(ner3 - ner2);
   const dUC = safe(ner4 - ner3);
 
-  // Build wfData sequentially (no inline side-effects)
+  // Build wfData sequentially (keine Side-Effects im Literal)
   let cur = safe(rent);
   const wfData = [];
   wfData.push({ name: "Headline",   base: 0,   delta: cur,  isTotal: true  });
@@ -402,7 +403,7 @@ export default function App() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* LEFT */}
+          {/* LEFT: Inputs */}
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <NumericField label="NLA (sqm)" value={f.nla} onChange={S("nla")} />
@@ -449,10 +450,10 @@ export default function App() {
             </div>
           </div>
 
-          {/* RIGHT */}
+          {/* RIGHT: Results */}
           <div className="md:sticky md:top-6 h-fit">
             <div className="rounded-lg border p-4 space-y-2 bg-white">
-              {/* Export */}
+              {/* Export-Buttons */}
               <div className="flex gap-2 justify-end">
                 <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">
                   Export Results PNG
@@ -462,6 +463,7 @@ export default function App() {
                 </button>
               </div>
 
+              {/* Inhalte (ohne Buttons) */}
               <div ref={resultsContentRef}>
                 {f.tenant.trim() && (
                   <div className="mb-1">
@@ -506,8 +508,8 @@ export default function App() {
                     </ResponsiveContainer>
                   </div>
 
-                  {/* Bars / Waterfall */}
-                  <div className="h-60 border rounded p-2 col-span-2">
+                  {/* Toggle + Chart (Bars/Waterfall) */}
+                  <div className="h-64 border rounded p-2 col-span-2">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-sm font-bold">
                         <span>{viewMode === "bars" ? "NER vs Headline (€/sqm)" : "Waterfall (€/sqm)"}</span>
