@@ -13,8 +13,8 @@ import {
 import { toPng } from "html-to-image";
 
 /* ---- NUR DIESE 3 ZAHLEN ANPASSEN, um die Legenden zu verschieben ---- */
-const BASE_H = 0;     // X-Achsenhöhe (Bars & Waterfall)
-const BASE_B = 0;     // bottom margin (Bars & Waterfall)
+const BASE_H = 19;     // X-Achsenhöhe (Bars & Waterfall)
+const BASE_B = 19;     // bottom margin (Bars & Waterfall)
 const FIT_EXTRA = -20; // Fit-Outs zusätzlich tiefer als Bars/Waterfall (0 = gleiche Linie)
 /* --------------------------------------------------------------------- */
 
