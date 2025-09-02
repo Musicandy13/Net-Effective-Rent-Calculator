@@ -55,7 +55,7 @@ function Delta({ base, val }) {
   );
 }
 
-/* ---------- inputs ---------- */
+/* ---------- input ---------- */
 function NumericField({
   label, value, onChange, format = "2dec", step = 1, min = 0,
   readOnly = false, onCommit, suffix,
@@ -106,7 +106,7 @@ const PercentLabel = ({ x, y, width, value }) => {
     </text>
   );
 };
-const BarNumberLabel = ({ x, y, width, height, value }) => {
+const BarNumberLabel = ({ x, y, width, value }) => {
   if (!Number.isFinite(value)) return null;
   const cx = x + width / 2;
   return (
@@ -134,12 +134,12 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   );
 };
 
-/* ---------- Waterfall custom label (alles OBERHALB) ---------- */
+/* ---------- Waterfall label (alles OBERHALB) ---------- */
 const WFLabel = (props) => {
   const { x, y, width, payload } = props;
-  const cx = x + (width ?? 0) / 2;
+  const cx = (Number.isFinite(x) ? x : 0) + (Number.isFinite(width) ? width / 2 : 0);
 
-  if (payload?.kind === "total") {
+  if (payload?.type === "total") {
     // Headline / Final: grüne Miete
     return (
       <text x={cx} y={y - 6} textAnchor="middle" fill="#16a34a" fontWeight="800" fontSize={12}>
@@ -186,6 +186,7 @@ function WaterfallChart({ data, isExporting }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
+        key="waterfall"
         data={data}
         barCategoryGap={18}
         barGap={4}
@@ -195,20 +196,20 @@ function WaterfallChart({ data, isExporting }) {
         <YAxis hide />
         <Tooltip
           formatter={(val, _n, { payload }) => {
-            if (payload?.kind === "total") {
+            if (payload?.type === "total") {
               return [`${F(safe(payload.value), 2)} €/sqm`, "Rent"];
             }
             return [`−${F(Math.abs(safe(payload.delta)), 2)} €/sqm`, "Δ"];
           }}
         />
         <ReferenceLine y={0} />
-        {/* unsichtbarer Sockel */}
+        {/* Sockel (unsichtbar) */}
         <Bar dataKey="base" stackId="wf" fill="rgba(0,0,0,0)" />
-        {/* sichtbarer Anteil */}
+        {/* Sichtbare Säulen */}
         <Bar dataKey="delta" stackId="wf" isAnimationActive={!isExporting}>
           <LabelList content={<WFLabel />} />
           {data.map((d, i) => (
-            <Cell key={i} fill={d.kind === "total" ? "#16a34a" : "#dc2626"} />
+            <Cell key={i} fill={d.type === "total" ? "#16a34a" : "#dc2626"} />
           ))}
         </Bar>
       </BarChart>
@@ -293,7 +294,7 @@ export default function App() {
   const totalAgentFees = agentFees;
   const totalUnforeseen = unforeseen;
 
-  /* charts data (Bars) */
+  /* Bars chart data */
   const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"];
   const nerBars = [
     { label: "Headline", val: rent, pct: null, color: "#065f46" },
@@ -303,25 +304,29 @@ export default function App() {
     { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
   ].map(d => ({ name: d.label, sqm: safe(d.val), pct: Number.isFinite(d.pct) ? d.pct : null, color: d.color }));
 
-  /* charts data (Fit-Out monolith) */
-  const chartFitOutData = [{ name: "Fit-Outs", eur: totalFit }];
-
-  /* Waterfall: Totals grün, Steps rot; Labels oben; kurze Ticks */
+  /* Waterfall data – sicher & sequenziell */
   const dRF = safe(ner1 - rent);
   const dFO = safe(ner2 - ner1);
   const dAF = safe(ner3 - ner2);
   const dUC = safe(ner4 - ner3);
 
-  let c = safe(rent); // aktueller Mietwert
-  const wfData = [
-    { name: "Headline", base: 0, delta: c,     kind: "total", value: c },
-    { name: "RF",       base: c, delta: dRF,   kind: "step" }, c += dRF,
-    { name: "FO",       base: c, delta: dFO,   kind: "step" }, c += dFO,
-    { name: "AF",       base: c, delta: dAF,   kind: "step" }, c += dAF,
-    { name: "UC",       base: c, delta: dUC,   kind: "step" }, c += dUC,
-    { name: "Final NER",base: 0, delta: c,     kind: "total", value: c },
-  ].filter((d) => typeof d === "object") // sicherheitshalber – extrahiert nur die Objekte
-   .map(d => ({ ...d, base: safe(d.base), delta: safe(d.delta) }));
+  let cur = safe(rent);
+  const wfData = [];
+  wfData.push({ name: "Headline", base: 0, delta: cur, type: "total", value: cur });
+
+  wfData.push({ name: "RF", base: cur, delta: dRF, type: "step" });
+  cur += dRF;
+
+  wfData.push({ name: "FO", base: cur, delta: dFO, type: "step" });
+  cur += dFO;
+
+  wfData.push({ name: "AF", base: cur, delta: dAF, type: "step" });
+  cur += dAF;
+
+  wfData.push({ name: "UC", base: cur, delta: dUC, type: "step" });
+  cur += dUC;
+
+  wfData.push({ name: "Final NER", base: 0, delta: cur, type: "total", value: cur });
 
   /* export refs */
   const pageRef = useRef(null);
@@ -395,7 +400,7 @@ export default function App() {
                 <span className="text-gray-700">GLA (sqm)</span>
                 <input
                   readOnly
-                  value={F(gla, 2)}
+                  value={F(nla * (1 + addon / 100), 2)}
                   className="mt-1 block w-full border rounded-md p-2 bg-gray-100 text-gray-600"
                 />
               </label>
@@ -436,7 +441,7 @@ export default function App() {
           {/* RIGHT */}
           <div className="md:sticky md:top-6 h-fit">
             <div className="rounded-lg border p-4 space-y-2 bg-white">
-              {/* Export-Buttons */}
+              {/* Export */}
               <div className="flex gap-2 justify-end">
                 <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">
                   Export Results PNG
