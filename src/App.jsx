@@ -94,7 +94,7 @@ function NumericField({
   );
 }
 
-/* ---------- chart labels ---------- */
+/* ---------- chart labels (Bars: % above, €/sqm inside) ---------- */
 const PercentLabel = ({ x, y, width, value }) => {
   if (!Number.isFinite(value)) return null;
   const cx = x + width / 2;
@@ -135,18 +135,29 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   );
 };
 
-/* ---------- Waterfall labels ---------- */
-const WFLabel = ({ x, y, width, payload }) => {
+/* ---------- Waterfall label (HIGH above; no −0.00) ---------- */
+const WFLabel = ({ x, y, width, height, value, payload }) => {
+  // place labels much higher
   const cx = (Number.isFinite(x) ? x : 0) + (Number.isFinite(width) ? width / 2 : 0);
-  const yy = (Number.isFinite(y) ? y : 0) - 10;
+  const topOffset = 26; // raise label above the bar
+  const yy = (Number.isFinite(y) ? y : 0) - topOffset;
+
+  // robust rounding to avoid -0.00
+  const round2 = (n) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
+  const v = round2(value);
+
   if (payload?.isTotal) {
+    // Headline / Final NER: show rent value in green
     return (
       <text x={cx} y={yy} textAnchor="middle" fill="#16a34a" fontSize={12} fontWeight="800">
-        {F(safe(payload.delta), 2)}
+        {F(Math.abs(v), 2)}
       </text>
     );
   }
-  const abs = Math.abs(safe(payload?.delta));
+
+  const abs = Math.abs(v);
+  if (abs < 0.005) return null; // hide micro values
+
   return (
     <text x={cx} y={yy} textAnchor="middle" fill="#dc2626" fontSize={12} fontWeight="800">
       −{F(abs, 2)}
@@ -158,13 +169,18 @@ const WFLabel = ({ x, y, width, payload }) => {
 function BarsChart({ data, isExporting }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} barCategoryGap={18} barGap={4} margin={{ top: 28, right: 6, bottom: 6, left: 6 }}>
+      <BarChart
+        key="bars"
+        data={data}
+        barCategoryGap={18}
+        barGap={4}
+        margin={{ top: 28, right: 6, bottom: 6, left: 6 }}
+      >
         <XAxis dataKey="name" />
         <YAxis hide />
         <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
         <ReferenceLine y={0} />
         <Bar dataKey="sqm" barSize={36} isAnimationActive={!isExporting}>
-          {/* % above, €/sqm inside */}
           <LabelList dataKey="pct" content={<PercentLabel />} />
           <LabelList dataKey="sqm" content={<BarNumberLabel />} />
           {data.map((e, i) => (
@@ -185,13 +201,20 @@ function WaterfallChart({ data, isExporting }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
+        key="waterfall"
         data={data}
         barCategoryGap={18}
         barGap={4}
-        margin={{ top: 34, right: 10, bottom: 26, left: 10 }}
+        margin={{ top: 48, right: 12, bottom: 28, left: 12 }} // extra headroom for labels
       >
-        <XAxis dataKey="name" interval={0} height={24} tick={{ fontSize: 12, fontWeight: 700 }} />
-        <YAxis hide />
+        <XAxis
+          dataKey="name"
+          interval={0}
+          height={26}
+          tick={{ fontSize: 12, fontWeight: 700 }} // bold RF/FO/AF/UC
+        />
+        {/* generous domain so labels never clip */}
+        <YAxis hide domain={["dataMin - 3", "dataMax + 8"]} />
         <Tooltip
           formatter={(val, _n, ctx) => {
             const p = ctx?.payload || {};
@@ -200,11 +223,11 @@ function WaterfallChart({ data, isExporting }) {
           }}
         />
         <ReferenceLine y={0} />
-        {/* invisible base */}
+        {/* Base (invisible) */}
         <Bar dataKey="base" stackId="wf" fill="rgba(0,0,0,0)" />
-        {/* visible delta */}
+        {/* Steps/totals */}
         <Bar dataKey="delta" stackId="wf" isAnimationActive={!isExporting}>
-          <LabelList content={<WFLabel />} />
+          <LabelList dataKey="delta" content={<WFLabel />} />
           {data.map((d, i) => (
             <Cell key={i} fill={d.isTotal ? "#16a34a" : "#dc2626"} />
           ))}
@@ -232,7 +255,7 @@ export default function App() {
   });
   const S = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
   const [isExporting, setIsExporting] = useState(false);
-  const [viewMode, setViewMode] = useState("bars");
+  const [viewMode, setViewMode] = useState("bars"); // 'bars' | 'waterfall'
 
   /* parsed */
   const nla = clamp(P(f.nla));
@@ -291,21 +314,17 @@ export default function App() {
   const totalAgentFees = agentFees;
   const totalUnforeseen = unforeseen;
 
-  /* charts data */
-  const FIT_OUT_COLOR = "#c2410c";
-  const HEADLINE_COLOR = "#065f46";
+  /* Bars data */
   const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"];
-
-  const chartFitOutData = [{ name: "Fit-Outs", eur: totalFit }];
   const nerBars = [
-    { label: "Headline", val: rent, pct: null, color: HEADLINE_COLOR },
+    { label: "Headline", val: rent, pct: null, color: "#065f46" },
     { label: "NER 1", val: ner1, pct: rent > 0 ? ((ner1 - rent) / rent) * 100 : null, color: NER_COLORS[0] },
     { label: "NER 2", val: ner2, pct: rent > 0 ? ((ner2 - rent) / rent) * 100 : null, color: NER_COLORS[1] },
     { label: "NER 3", val: ner3, pct: rent > 0 ? ((ner3 - rent) / rent) * 100 : null, color: NER_COLORS[2] },
     { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
   ].map((d) => ({ name: d.label, sqm: safe(d.val), pct: Number.isFinite(d.pct) ? d.pct : null, color: d.color }));
 
-  /* Waterfall deltas */
+  /* Waterfall deltas (€/sqm) */
   const dRF = safe(ner1 - rent);
   const dFO = safe(ner2 - ner1);
   const dAF = safe(ner3 - ner2);
@@ -314,12 +333,12 @@ export default function App() {
   // Build wfData sequentially (no inline side-effects)
   let cur = safe(rent);
   const wfData = [];
-  wfData.push({ name: "Headline",   base: 0,   delta: cur,  isTotal: true });
+  wfData.push({ name: "Headline",   base: 0,   delta: cur,  isTotal: true  });
   wfData.push({ name: "RF",         base: cur, delta: dRF,  isTotal: false }); cur += dRF;
   wfData.push({ name: "FO",         base: cur, delta: dFO,  isTotal: false }); cur += dFO;
   wfData.push({ name: "AF",         base: cur, delta: dAF,  isTotal: false }); cur += dAF;
   wfData.push({ name: "UC",         base: cur, delta: dUC,  isTotal: false }); cur += dUC;
-  wfData.push({ name: "Final NER",  base: 0,   delta: cur,  isTotal: true });
+  wfData.push({ name: "Final NER",  base: 0,   delta: cur,  isTotal: true  });
 
   /* export refs */
   const pageRef = useRef(null);
@@ -476,12 +495,12 @@ export default function App() {
                   <div className="h-60 border rounded p-2 col-span-1">
                     <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartFitOutData}>
+                      <BarChart data={[{ name: "Fit-Outs", eur: totalFit }]}>
                         <XAxis dataKey="name" hide />
                         <YAxis hide />
                         <Tooltip formatter={(v) => FCUR0(v)} />
                         <ReferenceLine y={0} />
-                        <Bar dataKey="eur" fill={FIT_OUT_COLOR} barSize={40} isAnimationActive={!isExporting}>
+                        <Bar dataKey="eur" fill="#c2410c" barSize={40} isAnimationActive={!isExporting}>
                           <LabelList content={<VerticalMoneyLabel0 />} />
                         </Bar>
                       </BarChart>
