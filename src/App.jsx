@@ -146,11 +146,16 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
 
 /* ---------- Waterfall: Labels immer oben in einer Linie ---------- */
 const makeWFLabelTop = (data, fixedY) => (props) => {
-  const { x = 0, width = 0, index, value } = props || {};
+  const { x = 0, width = 0, index, value, payload } = props || {};
   const d = Array.isArray(data) && Number.isInteger(index) ? data[index] : {};
   const cx = x + width / 2;
 
-  const v = Number.isFinite(value) ? Math.round(value * 100) / 100 : 0;
+  // Delta robust ermitteln
+  const raw = Number.isFinite(d?.delta) ? d.delta
+            : Number.isFinite(payload?.delta) ? payload.delta
+            : Number.isFinite(value) ? value
+            : 0;
+  const v = Math.round(raw * 100) / 100;
   const abs = Math.abs(v);
 
   if (d?.isTotal) {
