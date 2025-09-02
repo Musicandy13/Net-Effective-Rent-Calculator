@@ -115,18 +115,16 @@ const BarNumberLabel = ({ x, y, width, height, value }) => {
     </text>
   );
 };
-// Nur diese Komponente anfassen
 const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   if (value == null) return null;
-  const cx = x + width / 2;
-  const cy = y + height / 2;
+  const cx = x + width / 2, cy = y + height / 2;
   return (
     <text
       x={cx}
       y={cy}
       transform={`rotate(-90, ${cx}, ${cy})`}
       textAnchor="middle"
-      dominantBaseline="middle"   // <— wichtig für vertikale Zentrierung
+      dominantBaseline="middle"
       fill="#ffffff"
       fontSize={16}
       fontWeight="800"
@@ -135,7 +133,26 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
     </text>
   );
 };
-
+/* Waterfall-Label */
+const WFLabel = ({ x, y, width, height, value, payload }) => {
+  const cx = x + width / 2;
+  if (payload.isTotal) {
+    const cy = y + height / 2;
+    return (
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle"
+            fill="#ffffff" fontWeight="800" fontSize={12}>
+        {F(payload.delta, 2)}
+      </text>
+    );
+  }
+  const sign = value >= 0 ? "+" : "";
+  return (
+    <text x={cx} y={y - 6} textAnchor="middle"
+          fill={value < 0 ? "#dc2626" : "#16a34a"} fontWeight="700" fontSize={12}>
+      {sign}{F(value, 2)}
+    </text>
+  );
+};
 
 /* ---------- App ---------- */
 export default function App() {
@@ -155,6 +172,7 @@ export default function App() {
   });
   const S = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
   const [isExporting, setIsExporting] = useState(false);
+  const [viewMode, setViewMode] = useState("bars"); // 'bars' | 'waterfall'
 
   /* parsed */
   const nla = clamp(P(f.nla));
@@ -211,7 +229,7 @@ export default function App() {
   const totalAgentFees = agentFees;
   const totalUnforeseen = unforeseen;
 
-  /* charts */
+  /* charts data */
   const FIT_OUT_COLOR = "#c2410c";
   const HEADLINE_COLOR = "#065f46";
   const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"];
@@ -222,13 +240,30 @@ export default function App() {
     { label: "NER 1", val: ner1, pct: rent > 0 ? ((ner1 - rent) / rent) * 100 : null, color: NER_COLORS[0] },
     { label: "NER 2", val: ner2, pct: rent > 0 ? ((ner2 - rent) / rent) * 100 : null, color: NER_COLORS[1] },
     { label: "NER 3", val: ner3, pct: rent > 0 ? ((ner3 - rent) / rent) * 100 : null, color: NER_COLORS[2] },
-    { label: "Final", val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
-  ].map((d) => ({ name: d.label, sqm: d.val, pct: d.pct, color: d.color }));
+    { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
+  ].map(d => ({ name: d.label, sqm: d.val, pct: d.pct, color: d.color }));
+
+  // Waterfall-Deltas (€/sqm)
+  const dRF  = ner1 - rent;
+  const dFit = ner2 - ner1;
+  const dAg  = ner3 - ner2;
+  const dUn  = ner4 - ner3;
+
+  // Waterfall-Daten
+  let cum = rent;
+  const wfData = [
+    { name: "Headline", base: 0, delta: rent, isTotal: true, color: HEADLINE_COLOR },
+    { name: "Rent-Free", base: cum, delta: dRF, isTotal: false, color: dRF < 0 ? "#dc2626" : "#16a34a" },
+    { name: "Fit-Outs",  base: (cum += dRF), delta: dFit, isTotal: false, color: dFit < 0 ? "#dc2626" : "#16a34a" },
+    { name: "Agent",     base: (cum += dFit), delta: dAg, isTotal: false, color: dAg < 0 ? "#dc2626" : "#16a34a" },
+    { name: "Unforeseen",base: (cum += dAg), delta: dUn, isTotal: false, color: dUn < 0 ? "#dc2626" : "#16a34a" },
+    { name: "Final NER", base: 0, delta: (cum += dUn), isTotal: true, color: "#2563eb" },
+  ];
 
   /* export refs */
-  const pageRef = useRef(null);           // entire page
-  const resultsCardRef = useRef(null);    // card incl. buttons
-  const resultsContentRef = useRef(null); // content only (no buttons)
+  const pageRef = useRef(null);
+  const resultsCardRef = useRef(null);
+  const resultsContentRef = useRef(null);
 
   /* ---------- EXPORTS (anti-clipping) ---------- */
   const exportNode = async (node, filename) => {
@@ -236,12 +271,10 @@ export default function App() {
     try {
       setIsExporting(true);
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-
       const rect = node.getBoundingClientRect();
       const pad = 24;
       const w = Math.ceil(rect.width) + pad * 2;
       const h = Math.ceil(rect.height) + pad * 2;
-
       const dataUrl = await toPng(node, {
         cacheBust: true,
         pixelRatio: 3,
@@ -250,13 +283,7 @@ export default function App() {
         height: h,
         canvasWidth: w,
         canvasHeight: h,
-        style: {
-          padding: `${pad}px`,
-          margin: "0",
-          overflow: "visible",
-          boxShadow: "none",
-          borderRadius: "0",
-        },
+        style: { padding: `${pad}px`, margin: "0", overflow: "visible", boxShadow: "none", borderRadius: "0" },
       });
       const a = document.createElement("a");
       a.href = dataUrl;
@@ -274,13 +301,11 @@ export default function App() {
     try {
       setIsExporting(true);
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-
       const node = resultsContentRef.current;
       const rect = node.getBoundingClientRect();
       const pad = 24;
       const w = Math.ceil(rect.width) + pad * 2;
       const h = Math.ceil(rect.height) + pad * 2;
-
       const dataUrl = await toPng(node, {
         cacheBust: true,
         pixelRatio: 3,
@@ -289,13 +314,7 @@ export default function App() {
         height: h,
         canvasWidth: w,
         canvasHeight: h,
-        style: {
-          padding: `${pad}px`,
-          margin: "0",
-          overflow: "visible",
-          boxShadow: "none",
-          borderRadius: "0",
-        },
+        style: { padding: `${pad}px`, margin: "0", overflow: "visible", boxShadow: "none", borderRadius: "0" },
       });
       const a = document.createElement("a");
       a.href = dataUrl;
@@ -310,7 +329,7 @@ export default function App() {
 
   /* ---------- UI ---------- */
   return (
-    <div style={{ backgroundColor: "#005CA9" }}>
+    <div style={{ backgroundColor: "#F3FCC4" }}>
       <div
         ref={pageRef}
         className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md"
@@ -437,28 +456,75 @@ export default function App() {
                     </ResponsiveContainer>
                   </div>
 
-                  {/* NER vs Headline */}
+                  {/* Toggle + Chart (Bars/Waterfall) */}
                   <div className="h-60 border rounded p-2 col-span-2">
-                    <div className="text-sm font-bold text-center mb-1">NER vs Headline (€/sqm)</div>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-sm font-bold">
+                        {viewMode === "bars" ? "NER vs Headline (€/sqm)" : "Waterfall (€/sqm)"}
+                      </div>
+                      <div className="text-xs">
+                        <label className="mr-2">
+                          <input
+                            type="radio"
+                            checked={viewMode === "bars"}
+                            onChange={() => setViewMode("bars")}
+                          />{" "}
+                          Bars
+                        </label>
+                        <label>
+                          <input
+                            type="radio"
+                            checked={viewMode === "waterfall"}
+                            onChange={() => setViewMode("waterfall")}
+                          />{" "}
+                          Waterfall
+                        </label>
+                      </div>
+                    </div>
+
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={nerBars} barCategoryGap={18} barGap={4}>
-                        <XAxis dataKey="name" />
-                        <YAxis hide />
-                        <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
-                        <ReferenceLine y={0} />
-                        <Bar dataKey="sqm" barSize={36} isAnimationActive={!isExporting}>
-                          <LabelList dataKey="sqm" content={<BarNumberLabel />} />
-                          <LabelList dataKey="pct" content={<PercentLabel />} />
-                          {nerBars.map((e, i) => (
-                            <Cell
-                              key={i}
-                              fill={e.color}
-                              stroke={e.name === "Final" ? "#dc2626" : undefined}
-                              strokeWidth={e.name === "Final" ? 2 : undefined}
-                            />
-                          ))}
-                        </Bar>
-                      </BarChart>
+                      {viewMode === "bars" ? (
+                        <BarChart data={nerBars} barCategoryGap={18} barGap={4}>
+                          <XAxis dataKey="name" />
+                          <YAxis hide />
+                          <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
+                          <ReferenceLine y={0} />
+                          <Bar dataKey="sqm" barSize={36} isAnimationActive={!isExporting}>
+                            <LabelList dataKey="sqm" content={<BarNumberLabel />} />
+                            <LabelList dataKey="pct" content={<PercentLabel />} />
+                            {nerBars.map((e, i) => (
+                              <Cell
+                                key={i}
+                                fill={e.color}
+                                stroke={e.name === "Final" ? "#dc2626" : undefined}
+                                strokeWidth={e.name === "Final" ? 2 : undefined}
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      ) : (
+                        <BarChart data={wfData} barCategoryGap={18} barGap={4}>
+                          <XAxis dataKey="name" />
+                          <YAxis hide />
+                          <Tooltip
+                            formatter={(v, n, p) =>
+                              n === "delta"
+                                ? [`${v >= 0 ? "+" : ""}${F(v, 2)} €/sqm`, "Δ"]
+                                : [`${F(v, 2)} €/sqm`, "Base"]
+                            }
+                          />
+                          <ReferenceLine y={0} />
+                          {/* Sockel */}
+                          <Bar dataKey="base" stackId="wf" fill="transparent" />
+                          {/* Schritte */}
+                          <Bar dataKey="delta" stackId="wf" isAnimationActive={!isExporting}>
+                            <LabelList content={<WFLabel />} />
+                            {wfData.map((d, i) => (
+                              <Cell key={i} fill={d.color} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      )}
                     </ResponsiveContainer>
                   </div>
                 </div>
