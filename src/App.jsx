@@ -135,14 +135,12 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   );
 };
 
-/* ---------- Waterfall label factory (HIGH above; no −0.00; totals green/conditional) ---------- */
+/* ---------- Waterfall label (high; −0.00 avoided; totals green if ≥0) ---------- */
 const makeWFLabel = (data) => (props) => {
   const { x, y, width, index, value } = props || {};
   const d = Array.isArray(data) && Number.isInteger(index) ? data[index] : {};
   const cx = (Number.isFinite(x) ? x : 0) + (Number.isFinite(width) ? width / 2 : 0);
-  const yy = (Number.isFinite(y) ? y : 0) - 30; // higher above bars
-
-  // avoid displaying -0.00
+  const yy = (Number.isFinite(y) ? y : 0) - 30;
   const v2 = Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
 
   if (d?.isTotal) {
@@ -156,9 +154,8 @@ const makeWFLabel = (data) => (props) => {
       </text>
     );
   }
-
   const abs = Math.abs(v2);
-  if (abs < 0.005) return null; // hide micro values
+  if (abs < 0.005) return null;
   return (
     <text x={cx} y={yy} textAnchor="middle" fill="#dc2626" fontSize={12} fontWeight="800">
       −{F(abs, 2)}
@@ -175,9 +172,13 @@ function BarsChart({ data, isExporting }) {
         data={data}
         barCategoryGap={18}
         barGap={4}
-        margin={{ top: 28, right: 6, bottom: 6, left: 6 }}
+        margin={{ top: 28, right: 6, bottom: 2, left: 6 }}  // ↓ align baseline with Fit-Outs
       >
-        <XAxis dataKey="name" />
+        <XAxis
+          dataKey="name"
+          height={16}
+          tick={{ fontSize: 12, fontWeight: 700 }}          // bold ticks (Headline, NER 1, ...)
+        />
         <YAxis hide />
         <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
         <ReferenceLine y={0} />
@@ -206,16 +207,14 @@ function WaterfallChart({ data, isExporting }) {
         data={data}
         barCategoryGap={18}
         barGap={4}
-        // more space above labels; less unused space below
-        margin={{ top: 44, right: 12, bottom: 10, left: 12 }}
+        margin={{ top: 44, right: 12, bottom: 2, left: 12 }} // ↓ align baseline with Fit-Outs
       >
         <XAxis
           dataKey="name"
           interval={0}
-          height={26}
-          tick={{ fontSize: 12, fontWeight: 700 }}  // bold RF/FO/AF/UC
+          height={16}
+          tick={{ fontSize: 12, fontWeight: 700 }}          // bold RF/FO/AF/UC
         />
-        {/* generous domain to prevent clipping */}
         <YAxis hide domain={["dataMin - 2", "dataMax + 10"]} />
         <Tooltip
           formatter={(val, _n, ctx) => {
@@ -225,9 +224,7 @@ function WaterfallChart({ data, isExporting }) {
           }}
         />
         <ReferenceLine y={0} />
-        {/* Invisible base */}
         <Bar dataKey="base" stackId="wf" fill="rgba(0,0,0,0)" />
-        {/* Visible delta */}
         <Bar dataKey="delta" stackId="wf" isAnimationActive={!isExporting}>
           <LabelList dataKey="delta" content={makeWFLabel(data)} />
           {data.map((d, i) => (
