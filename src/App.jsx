@@ -445,10 +445,29 @@ export default function App() {
                 </label>
               </div>
 
-              <NumericField label="Fit-Out €/sqm (NLA)" value={f.fitPerNLA} onChange={S("fitPerNLA")} readOnly={f.fitMode !== "perNLA")} suffix="€/sqm" />
-              <NumericField label="Fit-Out €/sqm (GLA)" value={f.fitPerGLA} onChange={S("fitPerGLA")} readOnly={f.fitMode !== "perGLA")} suffix="€/sqm" />
-              <NumericField label="Fit-Out Total (€)" value={f.fitTot} onChange={S("fitTot")} readOnly={f.fitMode !== "total")} suffix="€" />
-            </div>
+              <NumericField
+  label="Fit-Out €/sqm (NLA)"
+  value={f.fitPerNLA}
+  onChange={S("fitPerNLA")}
+  readOnly={f.fitMode !== "perNLA"}
+  suffix="€/sqm"
+/>
+
+<NumericField
+  label="Fit-Out €/sqm (GLA)"
+  value={f.fitPerGLA}
+  onChange={S("fitPerGLA")}
+  readOnly={f.fitMode !== "perGLA"}
+  suffix="€/sqm"
+/>
+
+<NumericField
+  label="Fit-Out Total (€)"
+  value={f.fitTot}
+  onChange={S("fitTot")}
+  readOnly={f.fitMode !== "total"}
+  suffix="€"
+/>
 
             <div className="grid grid-cols-2 gap-4">
               <NumericField label="Agent Fees (months)" value={f.agent} onChange={S("agent")} />
