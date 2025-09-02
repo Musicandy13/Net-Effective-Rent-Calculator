@@ -13,8 +13,8 @@ import {
 import { toPng } from "html-to-image";
 
 /* ---- NUR DIESE 3 ZAHLEN ANPASSEN, um die Legenden zu verschieben ---- */
-const BASE_H = 10;     // X-Achsenhöhe (Bars & Waterfall)
-const BASE_B = 10;     // bottom margin (Bars & Waterfall)
+const BASE_H = 0;     // X-Achsenhöhe (Bars & Waterfall)
+const BASE_B = 0;     // bottom margin (Bars & Waterfall)
 const FIT_EXTRA = -30; // Fit-Outs zusätzlich tiefer als Bars/Waterfall (0 = gleiche Linie)
 /* --------------------------------------------------------------------- */
 
@@ -256,9 +256,9 @@ export default function App() {
     tenant: "",
     nla: "1000",
     addon: "5.00",
-    rent: "46.00",
+    rent: "15.00",
     duration: "60",
-    rf: "4.0",
+    rf: "5.0",
     agent: "2.0",
     fitMode: "perNLA",
     fitPerNLA: "300.00",
