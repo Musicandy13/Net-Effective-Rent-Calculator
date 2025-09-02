@@ -12,6 +12,12 @@ import {
 } from "recharts";
 import { toPng } from "html-to-image";
 
+/* ---- LEGEND-BOTTOM CONTROL: nur diese 3 Zahlen anpassen ---- */
+const BASE_H = 34;   // Höhe der X-Achse (Labels) für Bars & Waterfall
+const BASE_B = 36;   // Bottom-Margin für Bars & Waterfall
+const FIT_EXTRA = 10; // Zusatz-Pixel NUR für Fit-Outs (0 = gleiche Linie)
+/* ------------------------------------------------------------ */
+
 /* ---------- utils ---------- */
 const clamp = (n, min = 0) => (Number.isFinite(n) ? Math.max(min, n) : 0);
 const safe = (n) => (Number.isFinite(n) ? n : 0);
@@ -166,17 +172,17 @@ const makeWFLabel = (data) => (props) => {
 function BarsChart({ data, isExporting }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
-<BarChart
-  data={data}
-  barCategoryGap={18}
-  barGap={4}
-  margin={{ top: 28, right: 6, bottom: BASE_B, left: 6 }}
->
-  <XAxis
-    dataKey="name"
-    height={BASE_H}
-    tick={{ fontSize: 12, fontWeight: 700 }}
-  />           // fette Tick-Labels
+      <BarChart
+        key="bars"
+        data={data}
+        barCategoryGap={18}
+        barGap={4}
+        margin={{ top: 28, right: 6, bottom: BASE_B, left: 6 }}
+      >
+        <XAxis
+          dataKey="name"
+          height={BASE_H}
+          tick={{ fontSize: 12, fontWeight: 700 }}
         />
         <YAxis hide />
         <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
@@ -206,13 +212,13 @@ function WaterfallChart({ data, isExporting }) {
         data={data}
         barCategoryGap={8}
         barGap={6}
-        margin={{ top: 44, right: 12, bottom: 36, left: 12 }} // tiefer
+        margin={{ top: 44, right: 12, bottom: BASE_B, left: 12 }}
       >
         <XAxis
           dataKey="name"
           interval={0}
-          height={34}                                         // gleiche Achsenhöhe
-          tick={{ fontSize: 12, fontWeight: 700 }}            // fette Legende (RF/FO/AF/UC)
+          height={BASE_H}
+          tick={{ fontSize: 12, fontWeight: 700 }}
         />
         <YAxis hide domain={["dataMin - 2", "dataMax + 8"]} />
         <Tooltip
@@ -223,7 +229,9 @@ function WaterfallChart({ data, isExporting }) {
           }}
         />
         <ReferenceLine y={0} />
+        {/* Sockel (unsichtbar) */}
         <Bar dataKey="base" stackId="wf" fill="rgba(0,0,0,0)" />
+        {/* Schritte */}
         <Bar dataKey="delta" stackId="wf" barSize={44} isAnimationActive={!isExporting}>
           <LabelList dataKey="delta" content={makeWFLabel(data)} />
           {data.map((d, i) => (
@@ -253,7 +261,7 @@ export default function App() {
   });
   const S = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
   const [isExporting, setIsExporting] = useState(false);
-  const [viewMode, setViewMode] = useState("bars");
+  const [viewMode, setViewMode] = useState("bars"); // 'bars' | 'waterfall'
 
   /* parsed */
   const nla = clamp(P(f.nla));
@@ -310,8 +318,10 @@ export default function App() {
   const totalAgentFees = agentFees;
   const totalUnforeseen = unforeseen;
 
-  /* Bars data */
+  /* charts data */
+  const chartFitOutData = [{ name: "Fit-Outs", eur: totalFit }];
   const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"];
+
   const nerBars = [
     { label: "Headline", val: rent, pct: null, color: "#065f46" },
     { label: "NER 1", val: ner1, pct: rent > 0 ? ((ner1 - rent) / rent) * 100 : null, color: NER_COLORS[0] },
@@ -435,9 +445,9 @@ export default function App() {
                 </label>
               </div>
 
-              <NumericField label="Fit-Out €/sqm (NLA)" value={f.fitPerNLA} onChange={S("fitPerNLA")} readOnly={f.fitMode !== "perNLA"} suffix="€/sqm" />
-              <NumericField label="Fit-Out €/sqm (GLA)" value={f.fitPerGLA} onChange={S("fitPerGLA")} readOnly={f.fitMode !== "perGLA"} suffix="€/sqm" />
-              <NumericField label="Fit-Out Total (€)" value={f.fitTot} onChange={S("fitTot")} readOnly={f.fitMode !== "total"} suffix="€" />
+              <NumericField label="Fit-Out €/sqm (NLA)" value={f.fitPerNLA} onChange={S("fitPerNLA")} readOnly={f.fitMode !== "perNLA")} suffix="€/sqm" />
+              <NumericField label="Fit-Out €/sqm (GLA)" value={f.fitPerGLA} onChange={S("fitPerGLA")} readOnly={f.fitMode !== "perGLA")} suffix="€/sqm" />
+              <NumericField label="Fit-Out Total (€)" value={f.fitTot} onChange={S("fitTot")} readOnly={f.fitMode !== "total")} suffix="€" />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -492,15 +502,16 @@ export default function App() {
                     <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
-                        data={[{ name: "Fit-Outs", eur: totalFit }]}
-                        margin={{ top: 8, right: 0, bottom: 44, left: 0 }}
+                        data={chartFitOutData}
+                        margin={{ top: 8, right: 0, bottom: BASE_B + FIT_EXTRA, left: 0 }}
                       >
+                        {/* unsichtbare X-Achse mit Höhe -> Baseline-Ausrichtung */}
                         <XAxis
                           dataKey="name"
                           tick={false}
                           axisLine={false}
                           tickLine={false}
-                          height={40}
+                          height={BASE_H + FIT_EXTRA}
                         />
                         <YAxis hide />
                         <Tooltip formatter={(v) => FCUR0(v)} />
