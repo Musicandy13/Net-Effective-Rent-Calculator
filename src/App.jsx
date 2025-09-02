@@ -13,10 +13,13 @@ import {
 import { toPng } from "html-to-image";
 
 /* ---- NUR DIESE 3 ZAHLEN ANPASSEN, um die Legenden zu verschieben ---- */
-const BASE_H = 19;    // X-Achsenhöhe (Bars & Waterfall) – vorher 30, jetzt +5
-const BASE_B = 19;    // bottom margin (Bars & Waterfall) – vorher 28, jetzt +5
+const BASE_H = 19;     // X-Achsenhöhe (Bars & Waterfall)
+const BASE_B = 19;     // bottom margin (Bars & Waterfall)
 const FIT_EXTRA = -20; // Fit-Outs zusätzlich tiefer als Bars/Waterfall (0 = gleiche Linie)
 /* --------------------------------------------------------------------- */
+
+/* Fixe Y-Position für die Top-Labels im Waterfall (Pixel ab Plot-Top) */
+const WF_TOP_LABEL_Y = 22;
 
 /* ---------- utils ---------- */
 const clamp = (n, min = 0) => (Number.isFinite(n) ? Math.max(min, n) : 0);
@@ -141,28 +144,26 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   );
 };
 
-/* ---------- Waterfall label ---------- */
-const makeWFLabel = (data) => (props) => {
-  const { x, y, width, index, value } = props || {};
+/* ---------- Waterfall: Labels immer oben in einer Linie ---------- */
+const makeWFLabelTop = (data, fixedY) => (props) => {
+  const { x = 0, width = 0, index, value } = props || {};
   const d = Array.isArray(data) && Number.isInteger(index) ? data[index] : {};
-  const cx = (Number.isFinite(x) ? x : 0) + (Number.isFinite(width) ? width / 2 : 0);
-  const yy = (Number.isFinite(y) ? y : 0) - 30;
-  const v2 = Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
+  const cx = x + width / 2;
+
+  const v = Number.isFinite(value) ? Math.round(value * 100) / 100 : 0;
+  const abs = Math.abs(v);
 
   if (d?.isTotal) {
-    const isPos = v2 >= 0;
-    const color = isPos ? "#16a34a" : "#dc2626";
-    const sign = isPos ? "" : "−";
+    const pos = v >= 0;
     return (
-      <text x={cx} y={yy} textAnchor="middle" fill={color} fontSize={12} fontWeight="800">
-        {sign}{F(Math.abs(v2), 2)}
+      <text x={cx} y={fixedY} textAnchor="middle" fill={pos ? "#16a34a" : "#dc2626"} fontSize={12} fontWeight="800">
+        {pos ? "" : "−"}{F(Math.abs(v), 2)}
       </text>
     );
   }
-  const abs = Math.abs(v2);
   if (abs < 0.005) return null;
   return (
-    <text x={cx} y={yy} textAnchor="middle" fill="#dc2626" fontSize={12} fontWeight="800">
+    <text x={cx} y={fixedY} textAnchor="middle" fill="#dc2626" fontSize={12} fontWeight="800">
       −{F(abs, 2)}
     </text>
   );
@@ -212,7 +213,8 @@ function WaterfallChart({ data, isExporting }) {
         data={data}
         barCategoryGap={8}
         barGap={6}
-        margin={{ top: 44, right: 12, bottom: BASE_B, left: 12 }}
+        // etwas mehr Platz oben für die feste Label-Linie
+        margin={{ top: 56, right: 12, bottom: BASE_B, left: 12 }}
       >
         <XAxis
           dataKey="name"
@@ -229,9 +231,11 @@ function WaterfallChart({ data, isExporting }) {
           }}
         />
         <ReferenceLine y={0} />
+        {/* Sockel unsichtbar */}
         <Bar dataKey="base" stackId="wf" fill="rgba(0,0,0,0)" />
+        {/* Deltas */}
         <Bar dataKey="delta" stackId="wf" barSize={44} isAnimationActive={!isExporting}>
-          <LabelList dataKey="delta" content={makeWFLabel(data)} />
+          <LabelList content={makeWFLabelTop(data, WF_TOP_LABEL_Y)} />
           {data.map((d, i) => (
             <Cell key={i} fill={d.isTotal ? "#16a34a" : "#dc2626"} />
           ))}
@@ -419,7 +423,8 @@ export default function App() {
                   className="mt-1 block w-full border rounded-md p-2 bg-gray-100 text-gray-600"
                 />
               </label>
-              <NumericField label="Headline Rent €/sqm" value={f.rent} onChange={S("rent")} />
+              {/* Nur hier step=0.5 für die Spinner-Pfeile */}
+              <NumericField label="Headline Rent €/sqm" value={f.rent} onChange={S("rent")} step={0.5} />
               <NumericField label="Lease Term (months)" value={f.duration} onChange={S("duration")} format="int" />
               <NumericField label="Rent-Free (months)" value={f.rf} onChange={S("rf")} />
             </div>
@@ -442,7 +447,6 @@ export default function App() {
                 </label>
               </div>
 
-              {/* --- HIER WAR DER TIPPFEHLER: jetzt korrekt ohne zusätzliche ")" --- */}
               <NumericField label="Fit-Out €/sqm (NLA)" value={f.fitPerNLA} onChange={S("fitPerNLA")} readOnly={f.fitMode !== "perNLA"} suffix="€/sqm" />
               <NumericField label="Fit-Out €/sqm (GLA)" value={f.fitPerGLA} onChange={S("fitPerGLA")} readOnly={f.fitMode !== "perGLA"} suffix="€/sqm" />
               <NumericField label="Fit-Out Total (€)" value={f.fitTot} onChange={S("fitTot")} readOnly={f.fitMode !== "total"} suffix="€" />
