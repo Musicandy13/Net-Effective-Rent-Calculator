@@ -109,9 +109,8 @@ const PercentLabel = ({ x, y, width, value }) => {
 const BarNumberLabel = ({ x, y, width, height, value }) => {
   if (!Number.isFinite(value)) return null;
   const cx = x + width / 2;
-  const cy = y + height / 2;
   return (
-    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" fill="#ffffff" fontSize={12} fontWeight="800">
+    <text x={cx} y={y - 6} textAnchor="middle" fill="#111827" fontSize={12} fontWeight="800">
       {F(value, 2)}
     </text>
   );
@@ -135,30 +134,25 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   );
 };
 
-/* Waterfall-Labels:
-   – Headline: kein Label
-   – Schritte (RF/FO/AF/UC): immer ROT, zeigen −ABS(delta) €/sqm
-   – Final NER: blauer Wert in der Säule */
+/* Waterfall-Labels – ALLES OBERHALB:
+   – Headline/Final: grün, zeigen €/sqm
+   – RF/FO/AF/UC: rot, zeigen −ABS(Δ) €/sqm  */
 const WFLabel = ({ x, y, width, height, value, payload }) => {
   const cx = x + width / 2;
 
-  if (payload?.isTotal && payload?.name === "Headline") return null;
-
-  if (payload?.isTotal && payload?.name === "Final NER") {
-    const cy = y + height / 2;
+  if (payload?.isTotalStart || payload?.isTotalEnd) {
+    // Totals (Headline / Final)
     return (
-      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle"
-            fill="#ffffff" fontWeight="800" fontSize={12}>
-        {F(safe(payload.delta), 2)}
+      <text x={cx} y={y - 6} textAnchor="middle" fill="#16a34a" fontWeight="800" fontSize={12}>
+        {F(safe(payload.totalVal), 2)}
       </text>
     );
   }
 
-  if (!Number.isFinite(value)) return null;
-  const abs = Math.abs(value);
+  // Steps (Abzüge)
+  const abs = Math.abs(safe(payload.stepDelta));
   return (
-    <text x={cx} y={y - 6} textAnchor="middle"
-          fill="#dc2626" fontWeight="700" fontSize={12}>
+    <text x={cx} y={y - 6} textAnchor="middle" fill="#dc2626" fontWeight="800" fontSize={12}>
       −{F(abs, 2)}
     </text>
   );
@@ -198,32 +192,36 @@ function WaterfallChart({ data, isExporting }) {
         data={data}
         barCategoryGap={18}
         barGap={4}
-        margin={{ top: 8, right: 8, bottom: 22, left: 8 }}
+        margin={{ top: 8, right: 8, bottom: 24, left: 8 }}
       >
-        <XAxis
-          dataKey="name"
-          interval={0}
-          height={24}
-          tick={{ fontSize: 12 }}
-        />
+        <XAxis dataKey="name" interval={0} height={24} tick={{ fontSize: 12 }} />
         <YAxis hide />
         <Tooltip
           formatter={(v, n, { payload }) => {
-            if (payload?.isTotal) {
-              return [`${F(v, 2)} €/sqm`, payload?.name === "Final NER" ? "Final" : "Base"];
+            if (payload?.isTotalStart || payload?.isTotalEnd) {
+              return [`${F(payload.totalVal, 2)} €/sqm`, "Rent"];
             }
-            // Immer Abzug zeigen:
-            return [`−${F(Math.abs(v), 2)} €/sqm`, "Δ"];
+            // Steps als reine Abzüge
+            return [`−${F(Math.abs(payload.stepDelta), 2)} €/sqm`, "Δ"];
           }}
         />
         <ReferenceLine y={0} />
-        {/* Sockel (unsichtbar) */}
+
+        {/* Unsichtbarer Sockel */}
         <Bar dataKey="base" stackId="wf" fill="rgba(0,0,0,0)" />
-        {/* Deltas (immer rot) */}
+
+        {/* Sichtbare Säulen (Totals & Steps) */}
         <Bar dataKey="delta" stackId="wf" isAnimationActive={!isExporting}>
           <LabelList content={<WFLabel />} />
           {data.map((d, i) => (
-            <Cell key={i} fill={d.isTotal ? d.color : "#dc2626"} />
+            <Cell
+              key={i}
+              fill={
+                d.isTotalStart || d.isTotalEnd
+                  ? "#16a34a" // grün für Headline & Final
+                  : "#dc2626" // rot für Abzüge
+              }
+            />
           ))}
         </Bar>
       </BarChart>
@@ -249,7 +247,7 @@ export default function App() {
   });
   const S = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
   const [isExporting, setIsExporting] = useState(false);
-  const [viewMode, setViewMode] = useState("bars"); // 'bars' | 'waterfall'
+  const [viewMode, setViewMode] = useState("bars");
 
   /* parsed */
   const nla = clamp(P(f.nla));
@@ -310,38 +308,34 @@ export default function App() {
 
   /* charts data */
   const FIT_OUT_COLOR = "#c2410c";
-  const HEADLINE_COLOR = "#6b7280"; // neutral
-  const FINAL_COLOR = "#2563eb";
-  const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"];
-
-  const chartFitOutData = [{ name: "Fit-Outs", eur: totalFit }];
   const nerBars = [
     { label: "Headline", val: rent, pct: null, color: "#065f46" },
-    { label: "NER 1", val: ner1, pct: rent > 0 ? ((ner1 - rent) / rent) * 100 : null, color: NER_COLORS[0] },
-    { label: "NER 2", val: ner2, pct: rent > 0 ? ((ner2 - rent) / rent) * 100 : null, color: NER_COLORS[1] },
-    { label: "NER 3", val: ner3, pct: rent > 0 ? ((ner3 - rent) / rent) * 100 : null, color: NER_COLORS[2] },
-    { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
+    { label: "NER 1", val: ner1, pct: rent > 0 ? ((ner1 - rent) / rent) * 100 : null, color: "#1e3a8a" },
+    { label: "NER 2", val: ner2, pct: rent > 0 ? ((ner2 - rent) / rent) * 100 : null, color: "#2563eb" },
+    { label: "NER 3", val: ner3, pct: rent > 0 ? ((ner3 - rent) / rent) * 100 : null, color: "#3b82f6" },
+    { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: "#60a5fa" },
   ].map(d => ({ name: d.label, sqm: safe(d.val), pct: Number.isFinite(d.pct) ? d.pct : null, color: d.color }));
 
-  /* Waterfall: nur Deltas anzeigen (als Abzüge) */
-  const dRF  = safe(ner1 - rent);      // negativ
-  const dFit = safe(ner2 - ner1);      // negativ
-  const dAg  = safe(ner3 - ner2);      // negativ
-  const dUn  = safe(ner4 - ner3);      // negativ (falls Unforeseen > 0)
+  const chartFitOutData = [{ name: "Fit-Outs", eur: totalFit }];
+
+  /* Waterfall – Totals grün, Steps rot; Labels oben */
+  const dRF  = safe(ner1 - rent); // negativ
+  const dFO  = safe(ner2 - ner1); // negativ
+  const dAF  = safe(ner3 - ner2); // negativ
+  const dUC  = safe(ner4 - ner3); // negativ (falls >0 Kosten)
 
   let cum = safe(rent);
   const wfData = [
-    { name: "Headline", base: 0,                 delta: safe(rent), isTotal: true,  color: HEADLINE_COLOR },
-    { name: "RF",       base: safe(cum),         delta: dRF,  isTotal: false }, // rot erzwungen in <Cell/>
-    { name: "FO",       base: (cum += dRF),      delta: dFit, isTotal: false },
-    { name: "AF",       base: (cum += dFit),     delta: dAg,  isTotal: false },
-    { name: "UC",       base: (cum += dAg),      delta: dUn,  isTotal: false },
-    { name: "Final NER",base: 0,                 delta: (cum += dUn), isTotal: true, color: FINAL_COLOR },
+    { name: "Headline", base: 0, delta: rent, isTotalStart: true, isTotalEnd: false, totalVal: rent },
+    { name: "RF",       base: cum,         delta: dRF, isTotalStart: false, isTotalEnd: false, stepDelta: dRF },  cum += dRF,
+    { name: "FO",       base: cum,         delta: dFO, isTotalStart: false, isTotalEnd: false, stepDelta: dFO },  cum += dFO,
+    { name: "AF",       base: cum,         delta: dAF, isTotalStart: false, isTotalEnd: false, stepDelta: dAF },  cum += dAF,
+    { name: "UC",       base: cum,         delta: dUC, isTotalStart: false, isTotalEnd: false, stepDelta: dUC },  cum += dUC,
+    { name: "Final NER",base: 0, delta: cum, isTotalStart: false, isTotalEnd: true, totalVal: ner4 },
   ].map(d => ({ ...d, base: safe(d.base), delta: safe(d.delta) }));
 
   /* export refs */
   const pageRef = useRef(null);
-  const resultsCardRef = useRef(null);
   const resultsContentRef = useRef(null);
 
   /* ---------- EXPORTS ---------- */
@@ -368,8 +362,6 @@ export default function App() {
       a.href = dataUrl;
       a.download = filename;
       a.click();
-    } catch (e) {
-      console.error("PNG export failed", e);
     } finally {
       setIsExporting(false);
     }
@@ -377,33 +369,7 @@ export default function App() {
 
   const exportResultsPNG = async () => {
     if (!resultsContentRef.current) return;
-    try {
-      setIsExporting(true);
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      const node = resultsContentRef.current;
-      const rect = node.getBoundingClientRect();
-      const pad = 24;
-      const w = Math.ceil(rect.width) + pad * 2;
-      const h = Math.ceil(rect.height) + pad * 2;
-      const dataUrl = await toPng(node, {
-        cacheBust: true,
-        pixelRatio: 3,
-        backgroundColor: "#ffffff",
-        width: w,
-        height: h,
-        canvasWidth: w,
-        canvasHeight: h,
-        style: { padding: `${pad}px`, margin: "0", overflow: "visible", boxShadow: "none", borderRadius: "0" },
-      });
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = "ner-results.png";
-      a.click();
-    } catch (e) {
-      console.error("PNG export failed", e);
-    } finally {
-      setIsExporting(false);
-    }
+    await exportNode(resultsContentRef.current, "ner-results.png");
   };
 
   /* ---------- UI ---------- */
@@ -479,8 +445,8 @@ export default function App() {
 
           {/* RIGHT */}
           <div className="md:sticky md:top-6 h-fit">
-            <div ref={resultsCardRef} className="rounded-lg border p-4 space-y-2 bg-white">
-              {/* Export-Buttons */}
+            <div className="rounded-lg border p-4 space-y-2 bg-white">
+              {/* Export */}
               <div className="flex gap-2 justify-end">
                 <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">
                   Export Results PNG
@@ -490,14 +456,7 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Inhalte für Export */}
               <div ref={resultsContentRef}>
-                {f.tenant.trim() && (
-                  <div className="mb-1">
-                    <span className="text-xl font-bold">Tenant: <u>{f.tenant.trim()}</u></span>
-                  </div>
-                )}
-
                 <p className="mb-1">
                   <strong className="text-lg">Headline Rent:</strong> <strong>{F(rent, 2)} €/sqm</strong>
                 </p>
@@ -519,43 +478,26 @@ export default function App() {
 
                 {/* Charts */}
                 <div className="mt-4 grid grid-cols-3 gap-6">
-                  {/* Fit-Outs */}
                   <div className="h-60 border rounded p-2 col-span-1">
                     <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartFitOutData} margin={{ top: 6, right: 6, bottom: 6, left: 6 }}>
+                      <BarChart data={[{ name: "Fit-Outs", eur: totalFit }]} margin={{ top: 6, right: 6, bottom: 6, left: 6 }}>
                         <XAxis dataKey="name" hide />
                         <YAxis hide />
                         <Tooltip formatter={(v) => FCUR0(v)} />
                         <ReferenceLine y={0} />
-                        <Bar dataKey="eur" fill="#c2410c" barSize={40} isAnimationActive={!isExporting}>
+                        <Bar dataKey="eur" fill={FIT_OUT_COLOR} barSize={40}>
                           <LabelList content={<VerticalMoneyLabel0 />} />
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
 
-                  {/* Toggle + Chart */}
                   <div className="h-60 border rounded p-2 col-span-2">
                     <div className="flex items-center justify-between mb-1">
-                      <div className="text-sm font-bold">
-                        <span>{viewMode === "bars" ? "NER vs Headline (€/sqm)" : "Waterfall (€/sqm)"}</span>
-                      </div>
-                      <div className="text-xs">
-                        <label className="mr-2">
-                          <input type="radio" checked={viewMode === "bars"} onChange={() => setViewMode("bars")} /> Bars
-                        </label>
-                        <label>
-                          <input type="radio" checked={viewMode === "waterfall"} onChange={() => setViewMode("waterfall")} /> Waterfall
-                        </label>
-                      </div>
+                      <div className="text-sm font-bold">Waterfall (€/sqm)</div>
                     </div>
-
-                    {viewMode === "bars" ? (
-                      <BarsChart data={nerBars} isExporting={isExporting} />
-                    ) : (
-                      <WaterfallChart data={wfData} isExporting={isExporting} />
-                    )}
+                    <WaterfallChart data={wfData} isExporting={isExporting} />
                   </div>
                 </div>
 
