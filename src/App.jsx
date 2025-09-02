@@ -96,7 +96,7 @@ function NumericField({
 
 /* ---------- chart labels ---------- */
 const PercentLabel = ({ x, y, width, value }) => {
-  if (value == null) return null;
+  if (!Number.isFinite(value)) return null;
   const cx = x + width / 2;
   const fill = value < 0 ? "#dc2626" : "#16a34a";
   const sign = value > 0 ? "+" : "";
@@ -107,7 +107,7 @@ const PercentLabel = ({ x, y, width, value }) => {
   );
 };
 const BarNumberLabel = ({ x, y, width, height, value }) => {
-  if (value == null) return null;
+  if (!Number.isFinite(value)) return null;
   const cx = x + width / 2;
   const cy = y + height / 2;
   return (
@@ -117,7 +117,7 @@ const BarNumberLabel = ({ x, y, width, height, value }) => {
   );
 };
 const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
-  if (value == null) return null;
+  if (!Number.isFinite(value)) return null;
   const cx = x + width / 2, cy = y + height / 2;
   return (
     <text
@@ -137,15 +137,16 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
 /* Waterfall-Label */
 const WFLabel = ({ x, y, width, height, value, payload }) => {
   const cx = x + width / 2;
-  if (payload.isTotal) {
+  if (payload && payload.isTotal) {
     const cy = y + height / 2;
     return (
       <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle"
             fill="#ffffff" fontWeight="800" fontSize={12}>
-        {F(payload.delta, 2)}
+        {F(safe(payload.delta), 2)}
       </text>
     );
   }
+  if (!Number.isFinite(value)) return null;
   const sign = value >= 0 ? "+" : "";
   return (
     <text x={cx} y={y - 6} textAnchor="middle"
@@ -154,6 +155,60 @@ const WFLabel = ({ x, y, width, height, value, payload }) => {
     </text>
   );
 };
+
+/* ---------- Chart components (isolation) ---------- */
+function BarsChart({ data, nerColors, isExporting }) {
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart key="bars" data={data} barCategoryGap={18} barGap={4} margin={{ top: 6, right: 6, bottom: 6, left: 6 }}>
+        <XAxis dataKey="name" />
+        <YAxis hide />
+        <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
+        <ReferenceLine y={0} />
+        <Bar dataKey="sqm" barSize={36} isAnimationActive={!isExporting}>
+          <LabelList dataKey="sqm" content={<BarNumberLabel />} />
+          <LabelList dataKey="pct" content={<PercentLabel />} />
+          {data.map((e, i) => (
+            <Cell
+              key={i}
+              fill={e.color}
+              stroke={e.name === "Final" ? "#dc2626" : undefined}
+              strokeWidth={e.name === "Final" ? 2 : undefined}
+            />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+function WaterfallChart({ data, isExporting }) {
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart key="waterfall" data={data} barCategoryGap={18} barGap={4} margin={{ top: 6, right: 6, bottom: 6, left: 6 }}>
+        <XAxis dataKey="name" />
+        <YAxis hide />
+        <Tooltip
+          formatter={(v, n) =>
+            n === "delta"
+              ? [`${v >= 0 ? "+" : ""}${F(v, 2)} €/sqm`, "Δ"]
+              : [`${F(v, 2)} €/sqm`, "Base"]
+          }
+        />
+        <ReferenceLine y={0} />
+        {/* Sockel */}
+        <Bar dataKey="base" stackId="wf" fill="rgba(0,0,0,0)" />
+        {/* Schritte */}
+        <Bar dataKey="delta" stackId="wf" isAnimationActive={!isExporting}>
+          <LabelList content={<WFLabel />} />
+          {data.map((d, i) => (
+            <Cell key={i} fill={d.color} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
 
 /* ---------- App ---------- */
 export default function App() {
@@ -244,7 +299,7 @@ export default function App() {
     { label: "NER 2", val: ner2, pct: rent > 0 ? ((ner2 - rent) / rent) * 100 : null, color: NER_COLORS[1] },
     { label: "NER 3", val: ner3, pct: rent > 0 ? ((ner3 - rent) / rent) * 100 : null, color: NER_COLORS[2] },
     { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
-  ].map(d => ({ name: d.label, sqm: d.val, pct: d.pct, color: d.color }));
+  ].map(d => ({ name: d.label, sqm: safe(d.val), pct: Number.isFinite(d.pct) ? d.pct : null, color: d.color }));
 
   // Waterfall-Deltas (€/sqm) – safe gegen NaN
   const dRF  = safe(ner1 - rent);
@@ -256,12 +311,16 @@ export default function App() {
   let cum = safe(rent);
   const wfData = [
     { name: "Headline",   base: 0,                 delta: safe(rent), isTotal: true,  color: HEADLINE_COLOR },
-    { name: "Rent-Free",  base: safe(cum),         delta: safe(dRF),  isTotal: false, color: dRF < 0 ? "#dc2626" : "#16a34a" },
-    { name: "Fit-Outs",   base: (cum += safe(dRF)),delta: safe(dFit), isTotal: false, color: dFit < 0 ? "#dc2626" : "#16a34a" },
-    { name: "Agent",      base: (cum += safe(dFit)),delta: safe(dAg), isTotal: false, color: dAg < 0 ? "#dc2626" : "#16a34a" },
-    { name: "Unforeseen", base: (cum += safe(dAg)), delta: safe(dUn), isTotal: false, color: dUn < 0 ? "#dc2626" : "#16a34a" },
-    { name: "Final NER",  base: 0,                 delta: (cum += safe(dUn)), isTotal: true, color: "#2563eb" },
-  ];
+    { name: "Rent-Free",  base: safe(cum),         delta: dRF,  isTotal: false, color: dRF < 0 ? "#dc2626" : "#16a34a" },
+    { name: "Fit-Outs",   base: (cum += dRF),      delta: dFit, isTotal: false, color: dFit < 0 ? "#dc2626" : "#16a34a" },
+    { name: "Agent",      base: (cum += dFit),     delta: dAg,  isTotal: false, color: dAg < 0 ? "#dc2626" : "#16a34a" },
+    { name: "Unforeseen", base: (cum += dAg),      delta: dUn,  isTotal: false, color: dUn < 0 ? "#dc2626" : "#16a34a" },
+    { name: "Final NER",  base: 0,                 delta: (cum += dUn), isTotal: true, color: "#2563eb" },
+  ].map(d => ({
+    ...d,
+    base: safe(d.base),
+    delta: safe(d.delta),
+  }));
 
   /* export refs */
   const pageRef = useRef(null);
@@ -447,7 +506,7 @@ export default function App() {
                   <div className="h-60 border rounded p-2 col-span-1">
                     <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartFitOutData}>
+                      <BarChart data={chartFitOutData} margin={{ top: 6, right: 6, bottom: 6, left: 6 }}>
                         <XAxis dataKey="name" hide />
                         <YAxis hide />
                         <Tooltip formatter={(v) => FCUR0(v)} />
@@ -463,7 +522,8 @@ export default function App() {
                   <div className="h-60 border rounded p-2 col-span-2">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-sm font-bold">
-                        {viewMode === "bars" ? "NER vs Headline (€/sqm)" : "Waterfall (€/sqm)"}
+                        {/* Titel je Modus */}
+                        <span>{viewMode === "bars" ? "NER vs Headline (€/sqm)" : "Waterfall (€/sqm)"}</span>
                       </div>
                       <div className="text-xs">
                         <label className="mr-2">
@@ -485,50 +545,12 @@ export default function App() {
                       </div>
                     </div>
 
-                    <ResponsiveContainer width="100%" height="100%">
-                      {viewMode === "bars" ? (
-                        <BarChart key="bars" data={nerBars} barCategoryGap={18} barGap={4}>
-                          <XAxis dataKey="name" />
-                          <YAxis hide />
-                          <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
-                          <ReferenceLine y={0} />
-                          <Bar dataKey="sqm" barSize={36} isAnimationActive={!isExporting}>
-                            <LabelList dataKey="sqm" content={<BarNumberLabel />} />
-                            <LabelList dataKey="pct" content={<PercentLabel />} />
-                            {nerBars.map((e, i) => (
-                              <Cell
-                                key={i}
-                                fill={e.color}
-                                stroke={e.name === "Final" ? "#dc2626" : undefined}
-                                strokeWidth={e.name === "Final" ? 2 : undefined}
-                              />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      ) : (
-                        <BarChart key="waterfall" data={wfData} barCategoryGap={18} barGap={4}>
-                          <XAxis dataKey="name" />
-                          <YAxis hide />
-                          <Tooltip
-                            formatter={(v, n) =>
-                              n === "delta"
-                                ? [`${v >= 0 ? "+" : ""}${F(v, 2)} €/sqm`, "Δ"]
-                                : [`${F(v, 2)} €/sqm`, "Base"]
-                            }
-                          />
-                          <ReferenceLine y={0} />
-                          {/* Sockel */}
-                          <Bar dataKey="base" stackId="wf" fill="transparent" />
-                          {/* Schritte */}
-                          <Bar dataKey="delta" stackId="wf" isAnimationActive={!isExporting}>
-                            <LabelList content={<WFLabel />} />
-                            {wfData.map((d, i) => (
-                              <Cell key={i} fill={d.color} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      )}
-                    </ResponsiveContainer>
+                    {/* Isolierte Komponenten -> stabiler Remount */}
+                    {viewMode === "bars" ? (
+                      <BarsChart data={nerBars} nerColors={NER_COLORS} isExporting={isExporting} />
+                    ) : (
+                      <WaterfallChart data={wfData} isExporting={isExporting} />
+                    )}
                   </div>
                 </div>
 
