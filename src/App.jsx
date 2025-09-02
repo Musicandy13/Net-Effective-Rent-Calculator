@@ -15,7 +15,7 @@ import { toPng } from "html-to-image";
 /* ---- NUR DIESE 3 ZAHLEN ANPASSEN, um die Legenden zu verschieben ---- */
 const BASE_H = 10;     // X-Achsenhöhe (Bars & Waterfall)
 const BASE_B = 10;     // bottom margin (Bars & Waterfall)
-const FIT_EXTRA = -80; // Fit-Outs zusätzlich tiefer als Bars/Waterfall (0 = gleiche Linie)
+const FIT_EXTRA = -30; // Fit-Outs zusätzlich tiefer als Bars/Waterfall (0 = gleiche Linie)
 /* --------------------------------------------------------------------- */
 
 /* Fixe Y-Position für die Top-Labels im Waterfall (Pixel ab Plot-Top) */
@@ -531,7 +531,7 @@ export default function App() {
                   </div>
 
                   {/* Bars / Waterfall – ohne Rahmen */}
-                  <div className="p-2 col-span-2 h-[19.2rem]">
+                  <div className="h-64 p-2 col-span-2">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-sm font-bold">
                         <span>{viewMode === "bars" ? "NER vs Headline (€/sqm)" : "Waterfall (€/sqm)"}</span>
