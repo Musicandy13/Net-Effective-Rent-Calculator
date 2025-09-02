@@ -55,7 +55,7 @@ function Delta({ base, val }) {
   );
 }
 
-/* ---------- input ---------- */
+/* ---------- inputs ---------- */
 function NumericField({
   label, value, onChange, format = "2dec", step = 1, min = 0,
   readOnly = false, onCommit, suffix,
@@ -97,27 +97,28 @@ function NumericField({
 /* ---------- chart labels ---------- */
 const PercentLabel = ({ x, y, width, value }) => {
   if (!Number.isFinite(value)) return null;
-  const cx = x + width / 2;
+  const cx = (Number.isFinite(x) ? x : 0) + (Number.isFinite(width) ? width / 2 : 0);
   const fill = value < 0 ? "#dc2626" : "#16a34a";
   const sign = value > 0 ? "+" : "";
   return (
-    <text x={cx} y={y - 6} textAnchor="middle" fill={fill} fontSize={12} fontWeight="700">
+    <text x={cx} y={(Number.isFinite(y) ? y : 0) - 6} textAnchor="middle" fill={fill} fontSize={12} fontWeight="700">
       {sign}{F(value, 2)}%
     </text>
   );
 };
 const BarNumberLabel = ({ x, y, width, value }) => {
   if (!Number.isFinite(value)) return null;
-  const cx = x + width / 2;
+  const cx = (Number.isFinite(x) ? x : 0) + (Number.isFinite(width) ? width / 2 : 0);
   return (
-    <text x={cx} y={y - 6} textAnchor="middle" fill="#111827" fontSize={12} fontWeight="800">
+    <text x={cx} y={(Number.isFinite(y) ? y : 0) - 6} textAnchor="middle" fill="#111827" fontSize={12} fontWeight="800">
       {F(value, 2)}
     </text>
   );
 };
 const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   if (!Number.isFinite(value)) return null;
-  const cx = x + width / 2, cy = y + height / 2;
+  const cx = (Number.isFinite(x) ? x : 0) + (Number.isFinite(width) ? width / 2 : 0);
+  const cy = (Number.isFinite(y) ? y : 0) + (Number.isFinite(height) ? height / 2 : 0);
   return (
     <text
       x={cx}
@@ -134,23 +135,26 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   );
 };
 
-/* ---------- Waterfall label (alles OBERHALB) ---------- */
+/* ---------- Waterfall label: ALLES OBERHALB, defensiv ---------- */
 const WFLabel = (props) => {
-  const { x, y, width, payload } = props;
+  const { x, y, width, payload } = props || {};
   const cx = (Number.isFinite(x) ? x : 0) + (Number.isFinite(width) ? width / 2 : 0);
+  const yy = (Number.isFinite(y) ? y : 0) - 6;
 
-  if (payload?.type === "total") {
-    // Headline / Final: grüne Miete
+  if (payload && payload.isTotal) {
+    // Totals: grüne Miete
     return (
-      <text x={cx} y={y - 6} textAnchor="middle" fill="#16a34a" fontWeight="800" fontSize={12}>
-        {F(safe(payload.value), 2)}
+      <text x={cx} y={yy} textAnchor="middle" fill="#16a34a" fontWeight="800" fontSize={12}>
+        {F(safe(payload.delta), 2)}
       </text>
     );
   }
-  // Steps: rote Abzüge (−ABS(Δ))
+  if (!payload) return null;
+
+  // Steps: rote Abzüge „−ABS(Δ)“
   const abs = Math.abs(safe(payload.delta));
   return (
-    <text x={cx} y={y - 6} textAnchor="middle" fill="#dc2626" fontWeight="800" fontSize={12}>
+    <text x={cx} y={yy} textAnchor="middle" fill="#dc2626" fontWeight="800" fontSize={12}>
       −{F(abs, 2)}
     </text>
   );
@@ -195,11 +199,10 @@ function WaterfallChart({ data, isExporting }) {
         <XAxis dataKey="name" interval={0} height={24} tick={{ fontSize: 12 }} />
         <YAxis hide />
         <Tooltip
-          formatter={(val, _n, { payload }) => {
-            if (payload?.type === "total") {
-              return [`${F(safe(payload.value), 2)} €/sqm`, "Rent"];
-            }
-            return [`−${F(Math.abs(safe(payload.delta)), 2)} €/sqm`, "Δ"];
+          formatter={(val, _n, ctx) => {
+            const p = ctx && ctx.payload ? ctx.payload : {};
+            if (p.isTotal) return [`${F(safe(p.delta), 2)} €/sqm`, "Rent"];
+            return [`−${F(Math.abs(safe(p.delta)), 2)} €/sqm`, "Δ"];
           }}
         />
         <ReferenceLine y={0} />
@@ -209,7 +212,7 @@ function WaterfallChart({ data, isExporting }) {
         <Bar dataKey="delta" stackId="wf" isAnimationActive={!isExporting}>
           <LabelList content={<WFLabel />} />
           {data.map((d, i) => (
-            <Cell key={i} fill={d.type === "total" ? "#16a34a" : "#dc2626"} />
+            <Cell key={i} fill={d.isTotal ? "#16a34a" : "#dc2626"} />
           ))}
         </Bar>
       </BarChart>
@@ -276,7 +279,7 @@ export default function App() {
       if (Math.abs(n - nNLA) > 1e-9) S("fitPerNLA")(String(n));
       if (Math.abs(g - nGLA) > 1e-9) S("fitPerGLA")(String(g));
     }
-  }, [f.fitMode, f.nla, f.addon, f.fitPerNLA, f.fitPerGLA, f.fitTot]);
+  }, [f.fitMode, f.nla, f.addon, f.fitPerNLA, f.fitPerGLA, f.fitTot, S, nla, gla]);
 
   const totalFit =
     f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
@@ -304,29 +307,29 @@ export default function App() {
     { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
   ].map(d => ({ name: d.label, sqm: safe(d.val), pct: Number.isFinite(d.pct) ? d.pct : null, color: d.color }));
 
-  /* Waterfall data – sicher & sequenziell */
+  /* Waterfall data – sequenziell, sicher */
   const dRF = safe(ner1 - rent);
   const dFO = safe(ner2 - ner1);
   const dAF = safe(ner3 - ner2);
   const dUC = safe(ner4 - ner3);
 
-  let cur = safe(rent);
+  let c = safe(rent);
   const wfData = [];
-  wfData.push({ name: "Headline", base: 0, delta: cur, type: "total", value: cur });
+  wfData.push({ name: "Headline",   base: 0,    delta: c,    isTotal: true });
+  wfData.push({ name: "RF",         base: c,    delta: dRF,  isTotal: false }); c += dRF;
+  wfData.push({ name: "FO",         base: c,    delta: dFO,  isTotal: false }); c += dFO;
+  wfData.push({ name: "AF",         base: c,    delta: dAF,  isTotal: false }); c += dAF;
+  wfData.push({ name: "UC",         base: c,    delta: dUC,  isTotal: false }); c += dUC;
+  wfData.push({ name: "Final NER",  base: 0,    delta: c,    isTotal: true  });
 
-  wfData.push({ name: "RF", base: cur, delta: dRF, type: "step" });
-  cur += dRF;
-
-  wfData.push({ name: "FO", base: cur, delta: dFO, type: "step" });
-  cur += dFO;
-
-  wfData.push({ name: "AF", base: cur, delta: dAF, type: "step" });
-  cur += dAF;
-
-  wfData.push({ name: "UC", base: cur, delta: dUC, type: "step" });
-  cur += dUC;
-
-  wfData.push({ name: "Final NER", base: 0, delta: cur, type: "total", value: cur });
+  // Nur gültige Werte durchlassen
+  const wfDataSafe = wfData
+    .map(d => ({
+      ...d,
+      base: Number.isFinite(d.base) ? d.base : 0,
+      delta: Number.isFinite(d.delta) ? d.delta : 0,
+      name: d.name || "",
+    }));
 
   /* export refs */
   const pageRef = useRef(null);
@@ -400,7 +403,7 @@ export default function App() {
                 <span className="text-gray-700">GLA (sqm)</span>
                 <input
                   readOnly
-                  value={F(nla * (1 + addon / 100), 2)}
+                  value={F(gla, 2)}
                   className="mt-1 block w-full border rounded-md p-2 bg-gray-100 text-gray-600"
                 />
               </label>
@@ -515,7 +518,7 @@ export default function App() {
                     {viewMode === "bars" ? (
                       <BarsChart data={nerBars} isExporting={isExporting} />
                     ) : (
-                      <WaterfallChart data={wfData} isExporting={isExporting} />
+                      <WaterfallChart data={wfDataSafe} isExporting={isExporting} />
                     )}
                   </div>
                 </div>
