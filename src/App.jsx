@@ -94,31 +94,31 @@ function NumericField({
   );
 }
 
-/* ---------- chart labels (positions tuned) ---------- */
+/* ---------- chart labels (Bars: % above, €/sqm inside) ---------- */
 const PercentLabel = ({ x, y, width, value }) => {
   if (!Number.isFinite(value)) return null;
-  const cx = (Number.isFinite(x) ? x : 0) + (Number.isFinite(width) ? width / 2 : 0);
+  const cx = x + width / 2;
   const fill = value < 0 ? "#dc2626" : "#16a34a";
   const sign = value > 0 ? "+" : "";
   return (
-    <text x={cx} y={(Number.isFinite(y) ? y : 0) - 22} textAnchor="middle" fill={fill} fontSize={12} fontWeight="700">
+    <text x={cx} y={y - 18} textAnchor="middle" fill={fill} fontSize={12} fontWeight="700">
       {sign}{F(value, 2)}%
     </text>
   );
 };
-const BarNumberLabel = ({ x, y, width, value }) => {
+const BarNumberLabel = ({ x, y, width, height, value }) => {
   if (!Number.isFinite(value)) return null;
-  const cx = (Number.isFinite(x) ? x : 0) + (Number.isFinite(width) ? width / 2 : 0);
+  const cx = x + width / 2;
+  const cy = y + height / 2;
   return (
-    <text x={cx} y={(Number.isFinite(y) ? y : 0) - 6} textAnchor="middle" fill="#111827" fontSize={12} fontWeight="800">
+    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" fill="#ffffff" fontSize={12} fontWeight="800">
       {F(value, 2)}
     </text>
   );
 };
 const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   if (!Number.isFinite(value)) return null;
-  const cx = (Number.isFinite(x) ? x : 0) + (Number.isFinite(width) ? width / 2 : 0);
-  const cy = (Number.isFinite(y) ? y : 0) + (Number.isFinite(height) ? height / 2 : 0);
+  const cx = x + width / 2, cy = y + height / 2;
   return (
     <text
       x={cx}
@@ -135,24 +135,23 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   );
 };
 
-/* Waterfall labels (all above) */
-const WFLabel = (props) => {
-  const { x, y, width, payload } = props || {};
+/* ---------- Waterfall labels (deductions above; totals green) ---------- */
+const WFLabel = ({ x, y, width, payload }) => {
   const cx = (Number.isFinite(x) ? x : 0) + (Number.isFinite(width) ? width / 2 : 0);
-  const yy = (Number.isFinite(y) ? y : 0) - 10; // tiny extra clearance
+  const yy = (Number.isFinite(y) ? y : 0) - 10; // a bit of headroom
 
-  if (payload && payload.isTotal) {
+  if (payload?.isTotal) {
+    // Headline / Final: show rent value (green)
     return (
-      <text x={cx} y={yy} textAnchor="middle" fill="#16a34a" fontWeight="800" fontSize={12}>
+      <text x={cx} y={yy} textAnchor="middle" fill="#16a34a" fontSize={12} fontWeight="800">
         {F(safe(payload.delta), 2)}
       </text>
     );
   }
-  if (!payload) return null;
-
+  // Steps: show -|Δ| in red
   const abs = Math.abs(safe(payload.delta));
   return (
-    <text x={cx} y={yy} textAnchor="middle" fill="#dc2626" fontWeight="800" fontSize={12}>
+    <text x={cx} y={yy} textAnchor="middle" fill="#dc2626" fontSize={12} fontWeight="800">
       −{F(abs, 2)}
     </text>
   );
@@ -167,14 +166,14 @@ function BarsChart({ data, isExporting }) {
         data={data}
         barCategoryGap={18}
         barGap={4}
-        margin={{ top: 28, right: 6, bottom: 6, left: 6 }}   // more top headroom
+        margin={{ top: 28, right: 6, bottom: 6, left: 6 }}
       >
         <XAxis dataKey="name" />
-        <YAxis hide domain={["dataMin - 2", "dataMax + 2"]} />
+        <YAxis hide />
         <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
         <ReferenceLine y={0} />
         <Bar dataKey="sqm" barSize={36} isAnimationActive={!isExporting}>
-          {/* draw % first (higher), then €/sqm so €/sqm sits on top */}
+          {/* order: % first (higher), € inside on top */}
           <LabelList dataKey="pct" content={<PercentLabel />} />
           <LabelList dataKey="sqm" content={<BarNumberLabel />} />
           {data.map((e, i) => (
@@ -199,23 +198,28 @@ function WaterfallChart({ data, isExporting }) {
         data={data}
         barCategoryGap={18}
         barGap={4}
-        margin={{ top: 32, right: 8, bottom: 24, left: 8 }} // more top headroom
+        margin={{ top: 34, right: 10, bottom: 24, left: 10 }}  // more top headroom
       >
-        <XAxis dataKey="name" interval={0} height={24} tick={{ fontSize: 12 }} />
+        <XAxis
+          dataKey="name"
+          interval={0}
+          height={24}
+          tick={{ fontSize: 12, fontWeight: 700 }}   // bold RF/FO/AF/UC
+        />
         <YAxis hide domain={["dataMin - 2", "dataMax + 2"]} />
         <Tooltip
           formatter={(val, _n, ctx) => {
-            const p = ctx && ctx.payload ? ctx.payload : {};
+            const p = ctx?.payload || {};
             if (p.isTotal) return [`${F(safe(p.delta), 2)} €/sqm`, "Rent"];
             return [`−${F(Math.abs(safe(p.delta)), 2)} €/sqm`, "Δ"];
           }}
         />
         <ReferenceLine y={0} />
-        {/* Invisible base */}
+        {/* base (invisible) */}
         <Bar dataKey="base" stackId="wf" fill="rgba(0,0,0,0)" />
-        {/* Visible part */}
+        {/* delta (visible) */}
         <Bar dataKey="delta" stackId="wf" isAnimationActive={!isExporting}>
-          <LabelList content={<WFLabel />} />
+          <LabelList dataKey="delta" content={<WFLabel />} />
           {data.map((d, i) => (
             <Cell key={i} fill={d.isTotal ? "#16a34a" : "#dc2626"} />
           ))}
@@ -286,9 +290,7 @@ export default function App() {
     }
   }, [f.fitMode, f.nla, f.addon, f.fitPerNLA, f.fitPerGLA, f.fitTot]);
 
-  const totalFit =
-    f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
-
+  const totalFit = f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
   const agentFees = agent * rent * gla;
   const denom = Math.max(1e-9, duration * gla);
 
@@ -302,34 +304,43 @@ export default function App() {
   const totalAgentFees = agentFees;
   const totalUnforeseen = unforeseen;
 
-  /* Bars data */
+  /* charts data */
+  const FIT_OUT_COLOR = "#c2410c";
+  const HEADLINE_COLOR = "#065f46";
   const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"];
+
+  const chartFitOutData = [{ name: "Fit-Outs", eur: totalFit }];
   const nerBars = [
-    { label: "Headline", val: rent, pct: null, color: "#065f46" },
+    { label: "Headline", val: rent, pct: null, color: HEADLINE_COLOR },
     { label: "NER 1", val: ner1, pct: rent > 0 ? ((ner1 - rent) / rent) * 100 : null, color: NER_COLORS[0] },
     { label: "NER 2", val: ner2, pct: rent > 0 ? ((ner2 - rent) / rent) * 100 : null, color: NER_COLORS[1] },
     { label: "NER 3", val: ner3, pct: rent > 0 ? ((ner3 - rent) / rent) * 100 : null, color: NER_COLORS[2] },
-    { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
-  ].map(d => ({ name: d.label, sqm: safe(d.val), pct: Number.isFinite(d.pct) ? d.pct : null, color: d.color }));
+    { label: "Final", val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
+  ].map((d) => ({ name: d.label, sqm: safe(d.val), pct: Number.isFinite(d.pct) ? d.pct : null, color: d.color }));
 
-  /* Waterfall data – sequenziell & robust */
+  /* Waterfall deltas (€/sqm) */
   const dRF = safe(ner1 - rent);
   const dFO = safe(ner2 - ner1);
   const dAF = safe(ner3 - ner2);
   const dUC = safe(ner4 - ner3);
 
-  let c = safe(rent);
-  const wfData = [];
-  wfData.push({ name: "Headline",   base: 0,    delta: c,    isTotal: true });
-  wfData.push({ name: "RF",         base: c,    delta: dRF,  isTotal: false }); c += dRF;
-  wfData.push({ name: "FO",         base: c,    delta: dFO,  isTotal: false }); c += dFO;
-  wfData.push({ name: "AF",         base: c,    delta: dAF,  isTotal: false }); c += dAF;
-  wfData.push({ name: "UC",         base: c,    delta: dUC,  isTotal: false }); c += dUC;
-  wfData.push({ name: "Final NER",  base: 0,    delta: c,    isTotal: true  });
+  let cum = safe(rent);
+  const wfData = [
+    { name: "Headline",  base: 0,      delta: safe(rent), isTotal: true },
+    { name: "RF",        base: cum,    delta: dRF,        isTotal: false }, cum += dRF,
+    { name: "FO",        base: cum,    delta: dFO,        isTotal: false }, cum += dFO,
+    { name: "AF",        base: cum,    delta: dAF,        isTotal: false }, cum += dAF,
+    { name: "UC",        base: cum,    delta: dUC,        isTotal: false }, cum += dUC,
+    { name: "Final NER", base: 0,      delta: cum,        isTotal: true },
+  ].filter((d) => typeof d === "object") // keep only objects (no number artifacts)
+   .map((d) => ({ ...d, base: safe(d.base), delta: safe(d.delta) }));
 
+  /* export refs */
   const pageRef = useRef(null);
+  const resultsCardRef = useRef(null);
   const resultsContentRef = useRef(null);
 
+  /* ---------- EXPORTS ---------- */
   const exportNode = async (node, filename) => {
     if (!node) return;
     try {
@@ -389,7 +400,7 @@ export default function App() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* LEFT */}
+          {/* LEFT: Inputs */}
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <NumericField label="NLA (sqm)" value={f.nla} onChange={S("nla")} />
@@ -436,9 +447,9 @@ export default function App() {
             </div>
           </div>
 
-          {/* RIGHT */}
+          {/* RIGHT: Results */}
           <div className="md:sticky md:top-6 h-fit">
-            <div className="rounded-lg border p-4 space-y-2 bg-white">
+            <div ref={resultsCardRef} className="rounded-lg border p-4 space-y-2 bg-white">
               {/* Export */}
               <div className="flex gap-2 justify-end">
                 <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">
@@ -449,7 +460,6 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Inhalte */}
               <div ref={resultsContentRef}>
                 {f.tenant.trim() && (
                   <div className="mb-1">
@@ -482,19 +492,19 @@ export default function App() {
                   <div className="h-60 border rounded p-2 col-span-1">
                     <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={[{ name: "Fit-Outs", eur: totalFit }]} margin={{ top: 6, right: 6, bottom: 6, left: 6 }}>
+                      <BarChart data={[{ name: "Fit-Outs", eur: totalFit }]}>
                         <XAxis dataKey="name" hide />
                         <YAxis hide />
                         <Tooltip formatter={(v) => FCUR0(v)} />
                         <ReferenceLine y={0} />
-                        <Bar dataKey="eur" fill="#c2410c" barSize={40} isAnimationActive={!isExporting}>
+                        <Bar dataKey="eur" fill={FIT_OUT_COLOR} barSize={40} isAnimationActive={!isExporting}>
                           <LabelList content={<VerticalMoneyLabel0 />} />
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
 
-                  {/* Bars / Waterfall */}
+                  {/* Toggle + Chart */}
                   <div className="h-60 border rounded p-2 col-span-2">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-sm font-bold">
