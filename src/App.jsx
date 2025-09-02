@@ -134,10 +134,14 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
     </text>
   );
 };
-/* Waterfall-Label */
+/* Waterfall-Label – zeigt NUR die Abzüge (rot) an; Headline hat KEIN Label, Final hat blaues Label */
 const WFLabel = ({ x, y, width, height, value, payload }) => {
   const cx = x + width / 2;
-  if (payload && payload.isTotal) {
+  // Keine Zahl auf der Headline-Säule
+  if (payload?.isTotal && payload?.name === "Headline") return null;
+
+  // Final NER: Wert in der Säule
+  if (payload?.isTotal && payload?.name === "Final NER") {
     const cy = y + height / 2;
     return (
       <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle"
@@ -146,18 +150,19 @@ const WFLabel = ({ x, y, width, height, value, payload }) => {
       </text>
     );
   }
+
   if (!Number.isFinite(value)) return null;
   const sign = value >= 0 ? "+" : "";
+  const fill = value < 0 ? "#dc2626" : "#16a34a";
   return (
-    <text x={cx} y={y - 6} textAnchor="middle"
-          fill={value < 0 ? "#dc2626" : "#16a34a"} fontWeight="700" fontSize={12}>
+    <text x={cx} y={y - 6} textAnchor="middle" fill={fill} fontWeight="700" fontSize={12}>
       {sign}{F(value, 2)}
     </text>
   );
 };
 
 /* ---------- Chart components (isolation) ---------- */
-function BarsChart({ data, nerColors, isExporting }) {
+function BarsChart({ data, isExporting }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart key="bars" data={data} barCategoryGap={18} barGap={4} margin={{ top: 6, right: 6, bottom: 6, left: 6 }}>
@@ -185,20 +190,34 @@ function BarsChart({ data, nerColors, isExporting }) {
 function WaterfallChart({ data, isExporting }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart key="waterfall" data={data} barCategoryGap={18} barGap={4} margin={{ top: 6, right: 6, bottom: 6, left: 6 }}>
-        <XAxis dataKey="name" />
+      <BarChart
+        key="waterfall"
+        data={data}
+        barCategoryGap={18}
+        barGap={4}
+        margin={{ top: 8, right: 8, bottom: 20, left: 8 }}
+      >
+        <XAxis
+          dataKey="name"
+          interval={0}
+          height={24}
+          tick={{ fontSize: 12 }}
+        />
         <YAxis hide />
         <Tooltip
-          formatter={(v, n) =>
-            n === "delta"
-              ? [`${v >= 0 ? "+" : ""}${F(v, 2)} €/sqm`, "Δ"]
-              : [`${F(v, 2)} €/sqm`, "Base"]
-          }
+          formatter={(v, n, payload) => {
+            if (payload?.payload?.isTotal) {
+              // Headline & Final: Basis-/Endwert
+              return [`${F(v, 2)} €/sqm`, payload?.payload?.name === "Final NER" ? "Final" : "Base"];
+            }
+            // Schritte: Δ in €/sqm
+            return [`${v >= 0 ? "+" : ""}${F(v, 2)} €/sqm`, "Δ"];
+          }}
         />
         <ReferenceLine y={0} />
         {/* Sockel */}
         <Bar dataKey="base" stackId="wf" fill="rgba(0,0,0,0)" />
-        {/* Schritte */}
+        {/* Schritte / Deltas */}
         <Bar dataKey="delta" stackId="wf" isAnimationActive={!isExporting}>
           <LabelList content={<WFLabel />} />
           {data.map((d, i) => (
@@ -289,33 +308,34 @@ export default function App() {
 
   /* charts data */
   const FIT_OUT_COLOR = "#c2410c";
-  const HEADLINE_COLOR = "#065f46";
+  const HEADLINE_COLOR = "#6b7280"; // neutral grey for Headline (no green)
+  const FINAL_COLOR = "#2563eb";
   const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"];
 
   const chartFitOutData = [{ name: "Fit-Outs", eur: totalFit }];
   const nerBars = [
-    { label: "Headline", val: rent, pct: null, color: HEADLINE_COLOR },
+    { label: "Headline", val: rent, pct: null, color: "#065f46" },
     { label: "NER 1", val: ner1, pct: rent > 0 ? ((ner1 - rent) / rent) * 100 : null, color: NER_COLORS[0] },
     { label: "NER 2", val: ner2, pct: rent > 0 ? ((ner2 - rent) / rent) * 100 : null, color: NER_COLORS[1] },
     { label: "NER 3", val: ner3, pct: rent > 0 ? ((ner3 - rent) / rent) * 100 : null, color: NER_COLORS[2] },
     { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
   ].map(d => ({ name: d.label, sqm: safe(d.val), pct: Number.isFinite(d.pct) ? d.pct : null, color: d.color }));
 
-  // Waterfall-Deltas (€/sqm) – safe gegen NaN
-  const dRF  = safe(ner1 - rent);
-  const dFit = safe(ner2 - ner1);
-  const dAg  = safe(ner3 - ner2);
-  const dUn  = safe(ner4 - ner3);
+  // Waterfall-Deltas (€/sqm): Reduktionen sind negativ
+  const dRF  = safe(ner1 - rent);      // sollte < 0 sein
+  const dFit = safe(ner2 - ner1);      // < 0
+  const dAg  = safe(ner3 - ner2);      // < 0
+  const dUn  = safe(ner4 - ner3);      // <= 0 (falls Unforeseen > 0)
 
-  // Waterfall-Daten (gegen NaN abgesichert)
+  // Waterfall-Daten: Headline neutral grau (ohne Label), Schritte rot/grün, Final blau
   let cum = safe(rent);
   const wfData = [
-    { name: "Headline",   base: 0,                 delta: safe(rent), isTotal: true,  color: HEADLINE_COLOR },
-    { name: "Rent-Free",  base: safe(cum),         delta: dRF,  isTotal: false, color: dRF < 0 ? "#dc2626" : "#16a34a" },
-    { name: "Fit-Outs",   base: (cum += dRF),      delta: dFit, isTotal: false, color: dFit < 0 ? "#dc2626" : "#16a34a" },
-    { name: "Agent",      base: (cum += dFit),     delta: dAg,  isTotal: false, color: dAg < 0 ? "#dc2626" : "#16a34a" },
-    { name: "Unforeseen", base: (cum += dAg),      delta: dUn,  isTotal: false, color: dUn < 0 ? "#dc2626" : "#16a34a" },
-    { name: "Final NER",  base: 0,                 delta: (cum += dUn), isTotal: true, color: "#2563eb" },
+    { name: "Headline",         base: 0,                 delta: safe(rent), isTotal: true,  color: HEADLINE_COLOR },
+    { name: "Rent-Free",        base: safe(cum),         delta: dRF,  isTotal: false, color: dRF < 0 ? "#dc2626" : "#16a34a" },
+    { name: "Fit-Outs",         base: (cum += dRF),      delta: dFit, isTotal: false, color: dFit < 0 ? "#dc2626" : "#16a34a" },
+    { name: "Agent",            base: (cum += dFit),     delta: dAg,  isTotal: false, color: dAg < 0 ? "#dc2626" : "#16a34a" },
+    { name: "Unforeseen Costs", base: (cum += dAg),      delta: dUn,  isTotal: false, color: dUn < 0 ? "#dc2626" : "#16a34a" },
+    { name: "Final NER",        base: 0,                 delta: (cum += dUn), isTotal: true, color: FINAL_COLOR },
   ].map(d => ({
     ...d,
     base: safe(d.base),
@@ -522,7 +542,6 @@ export default function App() {
                   <div className="h-60 border rounded p-2 col-span-2">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-sm font-bold">
-                        {/* Titel je Modus */}
                         <span>{viewMode === "bars" ? "NER vs Headline (€/sqm)" : "Waterfall (€/sqm)"}</span>
                       </div>
                       <div className="text-xs">
@@ -545,9 +564,8 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Isolierte Komponenten -> stabiler Remount */}
                     {viewMode === "bars" ? (
-                      <BarsChart data={nerBars} nerColors={NER_COLORS} isExporting={isExporting} />
+                      <BarsChart data={nerBars} isExporting={isExporting} />
                     ) : (
                       <WaterfallChart data={wfData} isExporting={isExporting} />
                     )}
