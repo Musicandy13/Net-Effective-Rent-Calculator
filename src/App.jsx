@@ -393,7 +393,7 @@ export default function App() {
 
   /* ---------- UI ---------- */
   return (
-    <div style={{ backgroundColor: "#F3FCC4" }}>
+    <div style={{ backgroundColor: "#005CA9" }}>
       <div
         ref={pageRef}
         className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md"
