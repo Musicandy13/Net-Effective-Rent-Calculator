@@ -94,7 +94,7 @@ function NumericField({
   );
 }
 
-/* ---------- chart labels (Bars: % above, €/sqm inside) ---------- */
+/* ---------- chart labels ---------- */
 const PercentLabel = ({ x, y, width, value }) => {
   if (!Number.isFinite(value)) return null;
   const cx = x + width / 2;
@@ -135,21 +135,18 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   );
 };
 
-/* ---------- Waterfall labels (deductions above; totals green) ---------- */
+/* ---------- Waterfall labels ---------- */
 const WFLabel = ({ x, y, width, payload }) => {
   const cx = (Number.isFinite(x) ? x : 0) + (Number.isFinite(width) ? width / 2 : 0);
-  const yy = (Number.isFinite(y) ? y : 0) - 10; // a bit of headroom
-
+  const yy = (Number.isFinite(y) ? y : 0) - 10;
   if (payload?.isTotal) {
-    // Headline / Final: show rent value (green)
     return (
       <text x={cx} y={yy} textAnchor="middle" fill="#16a34a" fontSize={12} fontWeight="800">
         {F(safe(payload.delta), 2)}
       </text>
     );
   }
-  // Steps: show -|Δ| in red
-  const abs = Math.abs(safe(payload.delta));
+  const abs = Math.abs(safe(payload?.delta));
   return (
     <text x={cx} y={yy} textAnchor="middle" fill="#dc2626" fontSize={12} fontWeight="800">
       −{F(abs, 2)}
@@ -161,19 +158,13 @@ const WFLabel = ({ x, y, width, payload }) => {
 function BarsChart({ data, isExporting }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart
-        key="bars"
-        data={data}
-        barCategoryGap={18}
-        barGap={4}
-        margin={{ top: 28, right: 6, bottom: 6, left: 6 }}
-      >
+      <BarChart data={data} barCategoryGap={18} barGap={4} margin={{ top: 28, right: 6, bottom: 6, left: 6 }}>
         <XAxis dataKey="name" />
         <YAxis hide />
         <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
         <ReferenceLine y={0} />
         <Bar dataKey="sqm" barSize={36} isAnimationActive={!isExporting}>
-          {/* order: % first (higher), € inside on top */}
+          {/* % above, €/sqm inside */}
           <LabelList dataKey="pct" content={<PercentLabel />} />
           <LabelList dataKey="sqm" content={<BarNumberLabel />} />
           {data.map((e, i) => (
@@ -194,19 +185,13 @@ function WaterfallChart({ data, isExporting }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
-        key="waterfall"
         data={data}
         barCategoryGap={18}
         barGap={4}
-        margin={{ top: 34, right: 10, bottom: 24, left: 10 }}  // more top headroom
+        margin={{ top: 34, right: 10, bottom: 26, left: 10 }}
       >
-        <XAxis
-          dataKey="name"
-          interval={0}
-          height={24}
-          tick={{ fontSize: 12, fontWeight: 700 }}   // bold RF/FO/AF/UC
-        />
-        <YAxis hide domain={["dataMin - 2", "dataMax + 2"]} />
+        <XAxis dataKey="name" interval={0} height={24} tick={{ fontSize: 12, fontWeight: 700 }} />
+        <YAxis hide />
         <Tooltip
           formatter={(val, _n, ctx) => {
             const p = ctx?.payload || {};
@@ -215,11 +200,11 @@ function WaterfallChart({ data, isExporting }) {
           }}
         />
         <ReferenceLine y={0} />
-        {/* base (invisible) */}
+        {/* invisible base */}
         <Bar dataKey="base" stackId="wf" fill="rgba(0,0,0,0)" />
-        {/* delta (visible) */}
+        {/* visible delta */}
         <Bar dataKey="delta" stackId="wf" isAnimationActive={!isExporting}>
-          <LabelList dataKey="delta" content={<WFLabel />} />
+          <LabelList content={<WFLabel />} />
           {data.map((d, i) => (
             <Cell key={i} fill={d.isTotal ? "#16a34a" : "#dc2626"} />
           ))}
@@ -247,7 +232,7 @@ export default function App() {
   });
   const S = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
   const [isExporting, setIsExporting] = useState(false);
-  const [viewMode, setViewMode] = useState("bars"); // 'bars' | 'waterfall'
+  const [viewMode, setViewMode] = useState("bars");
 
   /* parsed */
   const nla = clamp(P(f.nla));
@@ -290,7 +275,9 @@ export default function App() {
     }
   }, [f.fitMode, f.nla, f.addon, f.fitPerNLA, f.fitPerGLA, f.fitTot]);
 
-  const totalFit = f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
+  const totalFit =
+    f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
+
   const agentFees = agent * rent * gla;
   const denom = Math.max(1e-9, duration * gla);
 
@@ -315,32 +302,29 @@ export default function App() {
     { label: "NER 1", val: ner1, pct: rent > 0 ? ((ner1 - rent) / rent) * 100 : null, color: NER_COLORS[0] },
     { label: "NER 2", val: ner2, pct: rent > 0 ? ((ner2 - rent) / rent) * 100 : null, color: NER_COLORS[1] },
     { label: "NER 3", val: ner3, pct: rent > 0 ? ((ner3 - rent) / rent) * 100 : null, color: NER_COLORS[2] },
-    { label: "Final", val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
+    { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
   ].map((d) => ({ name: d.label, sqm: safe(d.val), pct: Number.isFinite(d.pct) ? d.pct : null, color: d.color }));
 
-  /* Waterfall deltas (€/sqm) */
+  /* Waterfall deltas */
   const dRF = safe(ner1 - rent);
   const dFO = safe(ner2 - ner1);
   const dAF = safe(ner3 - ner2);
   const dUC = safe(ner4 - ner3);
 
-  let cum = safe(rent);
-  const wfData = [
-    { name: "Headline",  base: 0,      delta: safe(rent), isTotal: true },
-    { name: "RF",        base: cum,    delta: dRF,        isTotal: false }, cum += dRF,
-    { name: "FO",        base: cum,    delta: dFO,        isTotal: false }, cum += dFO,
-    { name: "AF",        base: cum,    delta: dAF,        isTotal: false }, cum += dAF,
-    { name: "UC",        base: cum,    delta: dUC,        isTotal: false }, cum += dUC,
-    { name: "Final NER", base: 0,      delta: cum,        isTotal: true },
-  ].filter((d) => typeof d === "object") // keep only objects (no number artifacts)
-   .map((d) => ({ ...d, base: safe(d.base), delta: safe(d.delta) }));
+  // Build wfData sequentially (no inline side-effects)
+  let cur = safe(rent);
+  const wfData = [];
+  wfData.push({ name: "Headline",   base: 0,   delta: cur,  isTotal: true });
+  wfData.push({ name: "RF",         base: cur, delta: dRF,  isTotal: false }); cur += dRF;
+  wfData.push({ name: "FO",         base: cur, delta: dFO,  isTotal: false }); cur += dFO;
+  wfData.push({ name: "AF",         base: cur, delta: dAF,  isTotal: false }); cur += dAF;
+  wfData.push({ name: "UC",         base: cur, delta: dUC,  isTotal: false }); cur += dUC;
+  wfData.push({ name: "Final NER",  base: 0,   delta: cur,  isTotal: true });
 
   /* export refs */
   const pageRef = useRef(null);
-  const resultsCardRef = useRef(null);
   const resultsContentRef = useRef(null);
 
-  /* ---------- EXPORTS ---------- */
   const exportNode = async (node, filename) => {
     if (!node) return;
     try {
@@ -400,7 +384,7 @@ export default function App() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* LEFT: Inputs */}
+          {/* LEFT */}
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <NumericField label="NLA (sqm)" value={f.nla} onChange={S("nla")} />
@@ -447,9 +431,9 @@ export default function App() {
             </div>
           </div>
 
-          {/* RIGHT: Results */}
+          {/* RIGHT */}
           <div className="md:sticky md:top-6 h-fit">
-            <div ref={resultsCardRef} className="rounded-lg border p-4 space-y-2 bg-white">
+            <div className="rounded-lg border p-4 space-y-2 bg-white">
               {/* Export */}
               <div className="flex gap-2 justify-end">
                 <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">
@@ -492,7 +476,7 @@ export default function App() {
                   <div className="h-60 border rounded p-2 col-span-1">
                     <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={[{ name: "Fit-Outs", eur: totalFit }]}>
+                      <BarChart data={chartFitOutData}>
                         <XAxis dataKey="name" hide />
                         <YAxis hide />
                         <Tooltip formatter={(v) => FCUR0(v)} />
@@ -504,7 +488,7 @@ export default function App() {
                     </ResponsiveContainer>
                   </div>
 
-                  {/* Toggle + Chart */}
+                  {/* Bars / Waterfall */}
                   <div className="h-60 border rounded p-2 col-span-2">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-sm font-bold">
