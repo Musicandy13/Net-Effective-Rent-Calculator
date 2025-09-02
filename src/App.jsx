@@ -532,8 +532,6 @@ export default function App() {
 
                   {/* Bars / Waterfall – ohne Rahmen */}
                   <div className="p-2 col-span-2 h-[19.2rem]">
-  …
-</div>
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-sm font-bold">
                         <span>{viewMode === "bars" ? "NER vs Headline (€/sqm)" : "Waterfall (€/sqm)"}</span>
