@@ -556,10 +556,13 @@ export default function App() {
 
                 {/* Plakatives Final-NER Banner */}
                 <div className="mt-10 border-t pt-4">
-                  <div className="mt-3 rounded-2xl ring-2 ring-emerald-500 ring-offset-2 ring-offset-white bg-emerald-50 px-5 py-4 flex items-center justify-between shadow-sm">
-                    <div className="text-emerald-700 font-extrabold text-lg">🏁 Final NER</div>
-                    <div className="text-3xl font-black tracking-tight text-gray-900">{F(ner4, 2)} €/sqm</div>
-                    <div className="ml-4"><Delta base={rent} val={ner4} /></div>
+  <div className="mt-3 rounded-2xl ring-2 ring-sky-500 ring-offset-2 ring-offset-white bg-sky-50 px-5 py-3 flex items-center justify-between shadow-sm">
+    <div className="text-sky-700 font-extrabold text-base">🏁 Final NER</div>
+    <div className="text-2xl font-extrabold tracking-tight text-gray-900">
+      {F(ner4, 2)} €/sqm
+    </div>
+    <div className="ml-4 text-sm">
+      <Delta base={rent} val={ner4} />
                   </div>
                 </div>
 
