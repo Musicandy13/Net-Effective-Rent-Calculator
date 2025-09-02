@@ -19,7 +19,7 @@ const FIT_EXTRA = -20; // Fit-Outs zusätzlich tiefer als Bars/Waterfall (0 = gl
 /* --------------------------------------------------------------------- */
 
 /* Fixe Y-Position für die Top-Labels im Waterfall (Pixel ab Plot-Top) */
-const WF_TOP_LABEL_Y = 10;
+const WF_TOP_LABEL_Y = 24;
 
 /* ---------- utils ---------- */
 const clamp = (n, min = 0) => (Number.isFinite(n) ? Math.max(min, n) : 0);
