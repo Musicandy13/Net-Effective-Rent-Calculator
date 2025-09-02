@@ -183,11 +183,11 @@ function BarsChart({ data, isExporting }) {
         data={data}
         barCategoryGap={18}
         barGap={4}
-        margin={{ top: 28, right: 6, bottom: BASE_B, left: 6 }}
+        margin={{ top: 28, right: 6, bottom: Math.max(0, BASE_B), left: 6 }}
       >
         <XAxis
           dataKey="name"
-          height={BASE_H}
+          height={Math.max(0, BASE_H)}
           tick={{ fontSize: 12, fontWeight: 700 }}
         />
         <YAxis hide />
@@ -219,12 +219,12 @@ function WaterfallChart({ data, isExporting }) {
         barCategoryGap={8}
         barGap={6}
         // etwas mehr Platz oben für die feste Label-Linie
-        margin={{ top: 56, right: 12, bottom: BASE_B, left: 12 }}
+        margin={{ top: 56, right: 12, bottom: Math.max(0, BASE_B), left: 12 }}
       >
         <XAxis
           dataKey="name"
           interval={0}
-          height={BASE_H}
+          height={Math.max(0, BASE_H)}
           tick={{ fontSize: 12, fontWeight: 700 }}
         />
         <YAxis hide domain={["dataMin - 2", "dataMax + 8"]} />
@@ -240,7 +240,7 @@ function WaterfallChart({ data, isExporting }) {
         <Bar dataKey="base" stackId="wf" fill="rgba(0,0,0,0)" />
         {/* Deltas */}
         <Bar dataKey="delta" stackId="wf" barSize={44} isAnimationActive={!isExporting}>
-         <LabelList dataKey="delta" content={makeWFLabelTop(data, WF_TOP_LABEL_Y)} />
+          <LabelList dataKey="delta" content={makeWFLabelTop(data, WF_TOP_LABEL_Y)} />
           {data.map((d, i) => (
             <Cell key={i} fill={d.isTotal ? "#16a34a" : "#dc2626"} />
           ))}
@@ -511,14 +511,14 @@ export default function App() {
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={[{ name: "Fit-Outs", eur: totalFit }]}
-                        margin={{ top: 8, right: 0, bottom: BASE_B + FIT_EXTRA, left: 0 }}
+                        margin={{ top: 8, right: 0, bottom: Math.max(0, BASE_B + FIT_EXTRA), left: 0 }}
                       >
                         <XAxis
                           dataKey="name"
                           tick={false}
                           axisLine={false}
                           tickLine={false}
-                          height={BASE_H + FIT_EXTRA}
+                          height={Math.max(0, BASE_H + FIT_EXTRA)}
                         />
                         <YAxis hide />
                         <Tooltip formatter={(v) => FCUR0(v)} />
@@ -553,13 +553,16 @@ export default function App() {
                     )}
                   </div>
                 </div>
+
+                {/* Plakatives Final-NER Banner */}
                 <div className="mt-10 border-t pt-4">
-  <div className="mt-3 rounded-2xl ring-2 ring-emerald-500 ring-offset-2 ring-offset-white bg-emerald-50 px-5 py-4 flex items-center justify-between shadow-sm">
-    <div className="text-emerald-700 font-extrabold text-lg">🏁 Final NER</div>
-    <div className="text-3xl font-black tracking-tight text-gray-900">{F(ner4, 2)} €/sqm</div>
-    <div className="ml-4"><Delta base={rent} val={ner4} /></div>
-  </div>
-</div>
+                  <div className="mt-3 rounded-2xl ring-2 ring-emerald-500 ring-offset-2 ring-offset-white bg-emerald-50 px-5 py-4 flex items-center justify-between shadow-sm">
+                    <div className="text-emerald-700 font-extrabold text-lg">🏁 Final NER</div>
+                    <div className="text-3xl font-black tracking-tight text-gray-900">{F(ner4, 2)} €/sqm</div>
+                    <div className="ml-4"><Delta base={rent} val={ner4} /></div>
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
