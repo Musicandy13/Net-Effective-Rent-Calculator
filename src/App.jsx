@@ -166,17 +166,17 @@ const makeWFLabel = (data) => (props) => {
 function BarsChart({ data, isExporting }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart
-        key="bars"
-        data={data}
-        barCategoryGap={18}
-        barGap={4}
-        margin={{ top: 28, right: 6, bottom: 36, left: 6 }}   // tiefer
-      >
-        <XAxis
-          dataKey="name"
-          height={34}                                          // gleiche Achsenhöhe
-          tick={{ fontSize: 12, fontWeight: 700 }}            // fette Tick-Labels
+<BarChart
+  data={data}
+  barCategoryGap={18}
+  barGap={4}
+  margin={{ top: 28, right: 6, bottom: BASE_B, left: 6 }}
+>
+  <XAxis
+    dataKey="name"
+    height={BASE_H}
+    tick={{ fontSize: 12, fontWeight: 700 }}
+  />           // fette Tick-Labels
         />
         <YAxis hide />
         <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
