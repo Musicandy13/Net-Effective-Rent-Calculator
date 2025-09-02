@@ -14,6 +14,7 @@ import { toPng } from "html-to-image";
 
 /* ---------- utils ---------- */
 const clamp = (n, min = 0) => (Number.isFinite(n) ? Math.max(min, n) : 0);
+const safe = (n) => (Number.isFinite(n) ? n : 0);
 const P = (v) => {
   let s = String(v ?? "").trim().replace(/\s/g, "");
   const hasDot = s.includes("."), c = (s.match(/,/g) || []).length;
@@ -215,7 +216,9 @@ export default function App() {
     }
   }, [f.fitMode, f.nla, f.addon, f.fitPerNLA, f.fitPerGLA, f.fitTot]);
 
-  const totalFit = f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
+  const totalFit =
+    f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
+
   const agentFees = agent * rent * gla;
   const denom = Math.max(1e-9, duration * gla);
 
@@ -243,21 +246,21 @@ export default function App() {
     { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
   ].map(d => ({ name: d.label, sqm: d.val, pct: d.pct, color: d.color }));
 
-  // Waterfall-Deltas (€/sqm)
-  const dRF  = ner1 - rent;
-  const dFit = ner2 - ner1;
-  const dAg  = ner3 - ner2;
-  const dUn  = ner4 - ner3;
+  // Waterfall-Deltas (€/sqm) – safe gegen NaN
+  const dRF  = safe(ner1 - rent);
+  const dFit = safe(ner2 - ner1);
+  const dAg  = safe(ner3 - ner2);
+  const dUn  = safe(ner4 - ner3);
 
-  // Waterfall-Daten
-  let cum = rent;
+  // Waterfall-Daten (gegen NaN abgesichert)
+  let cum = safe(rent);
   const wfData = [
-    { name: "Headline", base: 0, delta: rent, isTotal: true, color: HEADLINE_COLOR },
-    { name: "Rent-Free", base: cum, delta: dRF, isTotal: false, color: dRF < 0 ? "#dc2626" : "#16a34a" },
-    { name: "Fit-Outs",  base: (cum += dRF), delta: dFit, isTotal: false, color: dFit < 0 ? "#dc2626" : "#16a34a" },
-    { name: "Agent",     base: (cum += dFit), delta: dAg, isTotal: false, color: dAg < 0 ? "#dc2626" : "#16a34a" },
-    { name: "Unforeseen",base: (cum += dAg), delta: dUn, isTotal: false, color: dUn < 0 ? "#dc2626" : "#16a34a" },
-    { name: "Final NER", base: 0, delta: (cum += dUn), isTotal: true, color: "#2563eb" },
+    { name: "Headline",   base: 0,                 delta: safe(rent), isTotal: true,  color: HEADLINE_COLOR },
+    { name: "Rent-Free",  base: safe(cum),         delta: safe(dRF),  isTotal: false, color: dRF < 0 ? "#dc2626" : "#16a34a" },
+    { name: "Fit-Outs",   base: (cum += safe(dRF)),delta: safe(dFit), isTotal: false, color: dFit < 0 ? "#dc2626" : "#16a34a" },
+    { name: "Agent",      base: (cum += safe(dFit)),delta: safe(dAg), isTotal: false, color: dAg < 0 ? "#dc2626" : "#16a34a" },
+    { name: "Unforeseen", base: (cum += safe(dAg)), delta: safe(dUn), isTotal: false, color: dUn < 0 ? "#dc2626" : "#16a34a" },
+    { name: "Final NER",  base: 0,                 delta: (cum += safe(dUn)), isTotal: true, color: "#2563eb" },
   ];
 
   /* export refs */
@@ -484,7 +487,7 @@ export default function App() {
 
                     <ResponsiveContainer width="100%" height="100%">
                       {viewMode === "bars" ? (
-                        <BarChart data={nerBars} barCategoryGap={18} barGap={4}>
+                        <BarChart key="bars" data={nerBars} barCategoryGap={18} barGap={4}>
                           <XAxis dataKey="name" />
                           <YAxis hide />
                           <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
@@ -503,11 +506,11 @@ export default function App() {
                           </Bar>
                         </BarChart>
                       ) : (
-                        <BarChart data={wfData} barCategoryGap={18} barGap={4}>
+                        <BarChart key="waterfall" data={wfData} barCategoryGap={18} barGap={4}>
                           <XAxis dataKey="name" />
                           <YAxis hide />
                           <Tooltip
-                            formatter={(v, n, p) =>
+                            formatter={(v, n) =>
                               n === "delta"
                                 ? [`${v >= 0 ? "+" : ""}${F(v, 2)} €/sqm`, "Δ"]
                                 : [`${F(v, 2)} €/sqm`, "Base"]
