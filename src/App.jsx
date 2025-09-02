@@ -235,7 +235,7 @@ function WaterfallChart({ data, isExporting }) {
         <Bar dataKey="base" stackId="wf" fill="rgba(0,0,0,0)" />
         {/* Deltas */}
         <Bar dataKey="delta" stackId="wf" barSize={44} isAnimationActive={!isExporting}>
-          <LabelList content={makeWFLabelTop(data, WF_TOP_LABEL_Y)} />
+         <LabelList dataKey="delta" content={makeWFLabelTop(data, WF_TOP_LABEL_Y)} />
           {data.map((d, i) => (
             <Cell key={i} fill={d.isTotal ? "#16a34a" : "#dc2626"} />
           ))}
