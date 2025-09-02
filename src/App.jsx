@@ -55,7 +55,7 @@ function Delta({ base, val }) {
   );
 }
 
-/* ---------- inputs ---------- */
+/* ---------- input ---------- */
 function NumericField({
   label, value, onChange, format = "2dec", step = 1, min = 0,
   readOnly = false, onCommit, suffix,
@@ -134,13 +134,16 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
     </text>
   );
 };
-/* Waterfall-Label – zeigt NUR die Abzüge (rot) an; Headline hat KEIN Label, Final hat blaues Label */
+
+/* Waterfall-Labels:
+   – Headline: kein Label
+   – Schritte (RF/FO/AF/UC): immer ROT, zeigen −ABS(delta) €/sqm
+   – Final NER: blauer Wert in der Säule */
 const WFLabel = ({ x, y, width, height, value, payload }) => {
   const cx = x + width / 2;
-  // Keine Zahl auf der Headline-Säule
+
   if (payload?.isTotal && payload?.name === "Headline") return null;
 
-  // Final NER: Wert in der Säule
   if (payload?.isTotal && payload?.name === "Final NER") {
     const cy = y + height / 2;
     return (
@@ -152,16 +155,16 @@ const WFLabel = ({ x, y, width, height, value, payload }) => {
   }
 
   if (!Number.isFinite(value)) return null;
-  const sign = value >= 0 ? "+" : "";
-  const fill = value < 0 ? "#dc2626" : "#16a34a";
+  const abs = Math.abs(value);
   return (
-    <text x={cx} y={y - 6} textAnchor="middle" fill={fill} fontWeight="700" fontSize={12}>
-      {sign}{F(value, 2)}
+    <text x={cx} y={y - 6} textAnchor="middle"
+          fill="#dc2626" fontWeight="700" fontSize={12}>
+      −{F(abs, 2)}
     </text>
   );
 };
 
-/* ---------- Chart components (isolation) ---------- */
+/* ---------- Chart components ---------- */
 function BarsChart({ data, isExporting }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -195,7 +198,7 @@ function WaterfallChart({ data, isExporting }) {
         data={data}
         barCategoryGap={18}
         barGap={4}
-        margin={{ top: 8, right: 8, bottom: 20, left: 8 }}
+        margin={{ top: 8, right: 8, bottom: 22, left: 8 }}
       >
         <XAxis
           dataKey="name"
@@ -205,23 +208,22 @@ function WaterfallChart({ data, isExporting }) {
         />
         <YAxis hide />
         <Tooltip
-          formatter={(v, n, payload) => {
-            if (payload?.payload?.isTotal) {
-              // Headline & Final: Basis-/Endwert
-              return [`${F(v, 2)} €/sqm`, payload?.payload?.name === "Final NER" ? "Final" : "Base"];
+          formatter={(v, n, { payload }) => {
+            if (payload?.isTotal) {
+              return [`${F(v, 2)} €/sqm`, payload?.name === "Final NER" ? "Final" : "Base"];
             }
-            // Schritte: Δ in €/sqm
-            return [`${v >= 0 ? "+" : ""}${F(v, 2)} €/sqm`, "Δ"];
+            // Immer Abzug zeigen:
+            return [`−${F(Math.abs(v), 2)} €/sqm`, "Δ"];
           }}
         />
         <ReferenceLine y={0} />
-        {/* Sockel */}
+        {/* Sockel (unsichtbar) */}
         <Bar dataKey="base" stackId="wf" fill="rgba(0,0,0,0)" />
-        {/* Schritte / Deltas */}
+        {/* Deltas (immer rot) */}
         <Bar dataKey="delta" stackId="wf" isAnimationActive={!isExporting}>
           <LabelList content={<WFLabel />} />
           {data.map((d, i) => (
-            <Cell key={i} fill={d.color} />
+            <Cell key={i} fill={d.isTotal ? d.color : "#dc2626"} />
           ))}
         </Bar>
       </BarChart>
@@ -308,7 +310,7 @@ export default function App() {
 
   /* charts data */
   const FIT_OUT_COLOR = "#c2410c";
-  const HEADLINE_COLOR = "#6b7280"; // neutral grey for Headline (no green)
+  const HEADLINE_COLOR = "#6b7280"; // neutral
   const FINAL_COLOR = "#2563eb";
   const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"];
 
@@ -321,33 +323,28 @@ export default function App() {
     { label: "Final",   val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
   ].map(d => ({ name: d.label, sqm: safe(d.val), pct: Number.isFinite(d.pct) ? d.pct : null, color: d.color }));
 
-  // Waterfall-Deltas (€/sqm): Reduktionen sind negativ
-  const dRF  = safe(ner1 - rent);      // sollte < 0 sein
-  const dFit = safe(ner2 - ner1);      // < 0
-  const dAg  = safe(ner3 - ner2);      // < 0
-  const dUn  = safe(ner4 - ner3);      // <= 0 (falls Unforeseen > 0)
+  /* Waterfall: nur Deltas anzeigen (als Abzüge) */
+  const dRF  = safe(ner1 - rent);      // negativ
+  const dFit = safe(ner2 - ner1);      // negativ
+  const dAg  = safe(ner3 - ner2);      // negativ
+  const dUn  = safe(ner4 - ner3);      // negativ (falls Unforeseen > 0)
 
-  // Waterfall-Daten: Headline neutral grau (ohne Label), Schritte rot/grün, Final blau
   let cum = safe(rent);
   const wfData = [
-    { name: "Headline",         base: 0,                 delta: safe(rent), isTotal: true,  color: HEADLINE_COLOR },
-    { name: "Rent-Free",        base: safe(cum),         delta: dRF,  isTotal: false, color: dRF < 0 ? "#dc2626" : "#16a34a" },
-    { name: "Fit-Outs",         base: (cum += dRF),      delta: dFit, isTotal: false, color: dFit < 0 ? "#dc2626" : "#16a34a" },
-    { name: "Agent",            base: (cum += dFit),     delta: dAg,  isTotal: false, color: dAg < 0 ? "#dc2626" : "#16a34a" },
-    { name: "Unforeseen Costs", base: (cum += dAg),      delta: dUn,  isTotal: false, color: dUn < 0 ? "#dc2626" : "#16a34a" },
-    { name: "Final NER",        base: 0,                 delta: (cum += dUn), isTotal: true, color: FINAL_COLOR },
-  ].map(d => ({
-    ...d,
-    base: safe(d.base),
-    delta: safe(d.delta),
-  }));
+    { name: "Headline", base: 0,                 delta: safe(rent), isTotal: true,  color: HEADLINE_COLOR },
+    { name: "RF",       base: safe(cum),         delta: dRF,  isTotal: false }, // rot erzwungen in <Cell/>
+    { name: "FO",       base: (cum += dRF),      delta: dFit, isTotal: false },
+    { name: "AF",       base: (cum += dFit),     delta: dAg,  isTotal: false },
+    { name: "UC",       base: (cum += dAg),      delta: dUn,  isTotal: false },
+    { name: "Final NER",base: 0,                 delta: (cum += dUn), isTotal: true, color: FINAL_COLOR },
+  ].map(d => ({ ...d, base: safe(d.base), delta: safe(d.delta) }));
 
   /* export refs */
   const pageRef = useRef(null);
   const resultsCardRef = useRef(null);
   const resultsContentRef = useRef(null);
 
-  /* ---------- EXPORTS (anti-clipping) ---------- */
+  /* ---------- EXPORTS ---------- */
   const exportNode = async (node, filename) => {
     if (!node) return;
     try {
@@ -433,7 +430,7 @@ export default function App() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* LEFT: Inputs */}
+          {/* LEFT */}
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <NumericField label="NLA (sqm)" value={f.nla} onChange={S("nla")} />
@@ -480,7 +477,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* RIGHT: Results */}
+          {/* RIGHT */}
           <div className="md:sticky md:top-6 h-fit">
             <div ref={resultsCardRef} className="rounded-lg border p-4 space-y-2 bg-white">
               {/* Export-Buttons */}
@@ -493,7 +490,7 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Inhalte für Export (ohne Buttons) */}
+              {/* Inhalte für Export */}
               <div ref={resultsContentRef}>
                 {f.tenant.trim() && (
                   <div className="mb-1">
@@ -531,14 +528,14 @@ export default function App() {
                         <YAxis hide />
                         <Tooltip formatter={(v) => FCUR0(v)} />
                         <ReferenceLine y={0} />
-                        <Bar dataKey="eur" fill={FIT_OUT_COLOR} barSize={40} isAnimationActive={!isExporting}>
+                        <Bar dataKey="eur" fill="#c2410c" barSize={40} isAnimationActive={!isExporting}>
                           <LabelList content={<VerticalMoneyLabel0 />} />
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
 
-                  {/* Toggle + Chart (Bars/Waterfall) */}
+                  {/* Toggle + Chart */}
                   <div className="h-60 border rounded p-2 col-span-2">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-sm font-bold">
@@ -546,20 +543,10 @@ export default function App() {
                       </div>
                       <div className="text-xs">
                         <label className="mr-2">
-                          <input
-                            type="radio"
-                            checked={viewMode === "bars"}
-                            onChange={() => setViewMode("bars")}
-                          />{" "}
-                          Bars
+                          <input type="radio" checked={viewMode === "bars"} onChange={() => setViewMode("bars")} /> Bars
                         </label>
                         <label>
-                          <input
-                            type="radio"
-                            checked={viewMode === "waterfall"}
-                            onChange={() => setViewMode("waterfall")}
-                          />{" "}
-                          Waterfall
+                          <input type="radio" checked={viewMode === "waterfall"} onChange={() => setViewMode("waterfall")} /> Waterfall
                         </label>
                       </div>
                     </div>
