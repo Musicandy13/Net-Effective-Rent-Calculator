@@ -19,7 +19,7 @@ const FIT_EXTRA = -27;
 /* --------------------------------------- */
 
 /* Fixe Y-Position für die Top-Labels im Waterfall */
-const WF_TOP_LABEL_Y = 48;
+const WF_TOP_LABEL_Y = 54;
 
 /* ---------- Utils ---------- */
 const clamp = (n, min = 0) => (Number.isFinite(n) ? Math.max(min, n) : 0);
