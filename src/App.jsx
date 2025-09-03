@@ -13,9 +13,9 @@ import {
 import { toPng } from "html-to-image";
 
 /* ---- NUR DIESE 3 ZAHLEN ANPASSEN, um die Legenden zu verschieben ---- */
-const BASE_H = 20; // X-Achsenhöhe (Bars & Waterfall)
-const BASE_B = 10; // bottom margin (Bars & Waterfall)
-const FIT_EXTRA = -27; // Fit-Outs zusätzlich tiefer als Bars/Waterfall (0 = gleiche Linie)
+const BASE_H = 0; // X-Achsenhöhe (Bars & Waterfall)
+const BASE_B = 0; // bottom margin (Bars & Waterfall)
+const FIT_EXTRA = -20; // Fit-Outs zusätzlich tiefer als Bars/Waterfall (0 = gleiche Linie)
 /* --------------------------------------------------------------------- */
 
 /* Fixe Y-Position für die Top-Labels im Waterfall (Pixel ab Plot-Top) */
@@ -461,13 +461,14 @@ export default function App() {
     if (!node) return;
     try {
       setIsExporting(true);
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      await new Promise((r) =>
+        requestAnimationFrame(() => requestAnimationFrame(r))
+      );
       const rect = node.getBoundingClientRect();
       const pad = 24;
       const w = Math.ceil(rect.width) + pad * 2;
       const h = Math.ceil(rect.height) + pad * 2;
-      
-      // ===== KORRIGIERTER TEIL =====
+
       const dataUrl = await toPng(node, {
         cacheBust: true,
         pixelRatio: 3,
@@ -484,7 +485,6 @@ export default function App() {
           borderRadius: "0",
         },
       });
-      // ===== ENDE DER KORREKTUR =====
 
       const a = document.createElement("a");
       a.href = dataUrl;
@@ -598,7 +598,7 @@ export default function App() {
                   <span>Total (€)</span>
                 </label>
               </div>
-              
+
               <div className="space-y-3">
                 <NumericField
                   label="Fit-Out €/sqm (NLA)"
@@ -746,7 +746,7 @@ export default function App() {
                         />
                         <YAxis hide />
                         <Tooltip formatter={(v) => FCUR0(v)} />
-                        <ReferenceLine y={0} />
+                        {/* <ReferenceLine y={0} /> <-- DIESE LINIE WURDE ENTFERNT */}
                         <Bar
                           dataKey="eur"
                           fill="#c2410c"
