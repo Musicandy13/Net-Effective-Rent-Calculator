@@ -404,7 +404,7 @@ export default function App() {
                 )}
 
                 {/* Headline Rent Banner */}
-                <div className="mt-3 rounded-xl ring-2 ring-blue-300 ring-offset-1 bg-blue-50 px-4 py-2 flex items-center justify-between shadow-sm mb-3">
+                <div className="mt-1 rounded-xl ring-2 ring-blue-300 ring-offset-1 bg-blue-50 px-4 py-2 flex items-center justify-between shadow-sm mb-3">
                   <div className="font-bold text-lg">Headline Rent</div>
                   <div className="text-lg font-extrabold tracking-tight text-gray-900">{F(rent, 2)} €/sqm</div>
                 </div>
@@ -422,7 +422,7 @@ export default function App() {
                 <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b><Delta base={rent} val={ner3} /></p>
 
                 {/* Charts */}
-                <div className="mt-4 grid grid-cols-3 gap-6">
+                <div className="mt-2 grid grid-cols-3 gap-6">
                   {/* Fit-Outs */}
                   <div className="h-60 p-2 col-span-1">
                     <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
@@ -452,7 +452,7 @@ export default function App() {
                 </div>
 
                 {/* Final NER Banner */}
-                <div className="mt-6 border-t pt-3">
+                <div className="mt-4 border-t pt-3">
                   <div className="mt-3 rounded-2xl ring-2 ring-sky-500 ring-offset-2 bg-sky-50 px-5 py-3 flex items-center justify-between shadow-md">
                     <div className="text-sky-700 font-extrabold text-base">🏁 Final NER</div>
                     <div className="text-2xl font-extrabold tracking-tight text-gray-900">{F(ner4, 2)} €/sqm</div>
