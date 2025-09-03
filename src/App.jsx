@@ -510,8 +510,10 @@ export default function App() {
         className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md"
         style={{ boxShadow: "0 10px 25px rgba(0,0,0,.08)" }}
       >
-        <h2 className="text-2xl font-bold mb-2 text-center">
-          Net Effective Rent Calculator
+        <h2 className="text-3xl font-bold mb-2 text-center">
+            style={{ color: "#005CA9" }}
+>
+          Net Effective Rent (NER) Calculator
         </h2>
 
         {/* Tenant */}
