@@ -802,7 +802,7 @@ export default function App() {
                 </div>
 
                 {/* Plakatives Final-NER Banner */}
-                <div className="mt-10 border-t pt-4">
+                <div className="mt-4 border-t pt-4">
                   <div className="mt-3 rounded-2xl ring-2 ring-sky-500 ring-offset-2 ring-offset-white bg-sky-50 px-5 py-3 flex items-center justify-between shadow-sm">
                     <div className="text-sky-700 font-extrabold text-base">
                       🏁 Final NER
