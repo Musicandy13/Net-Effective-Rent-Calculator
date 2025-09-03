@@ -184,11 +184,7 @@ function BarsChart({ data, isExporting }) {
         barGap={4}
         margin={{ top: 28, right: 6, bottom: Math.max(0, BASE_B), left: 6 }}
       >
-        <XAxis
-          dataKey="name"
-          height={Math.max(0, BASE_H)}
-          tick={{ fontSize: 12, fontWeight: 700 }}
-        />
+        <XAxis dataKey="name" height={Math.max(0, BASE_H)} tick={{ fontSize: 12, fontWeight: 700 }} />
         <YAxis hide />
         <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
         <ReferenceLine y={0} />
@@ -196,12 +192,7 @@ function BarsChart({ data, isExporting }) {
           <LabelList dataKey="pct" content={<PercentLabel />} />
           <LabelList dataKey="sqm" content={<BarNumberLabel />} />
           {data.map((e, i) => (
-            <Cell
-              key={i}
-              fill={e.color}
-              stroke={e.name === "Final" ? "#dc2626" : undefined}
-              strokeWidth={e.name === "Final" ? 2 : undefined}
-            />
+            <Cell key={i} fill={e.color} stroke={e.name === "Final" ? "#dc2626" : undefined} strokeWidth={e.name === "Final" ? 2 : undefined} />
           ))}
         </Bar>
       </BarChart>
@@ -219,12 +210,7 @@ function WaterfallChart({ data, isExporting }) {
         barGap={6}
         margin={{ top: 56, right: 12, bottom: Math.max(0, BASE_B), left: 12 }}
       >
-        <XAxis
-          dataKey="name"
-          interval={0}
-          height={Math.max(0, BASE_H)}
-          tick={{ fontSize: 12, fontWeight: 700 }}
-        />
+        <XAxis dataKey="name" interval={0} height={Math.max(0, BASE_H)} tick={{ fontSize: 12, fontWeight: 700 }} />
         <YAxis hide domain={["dataMin - 2", "dataMax + 8"]} />
         <Tooltip
           formatter={(val, _n, ctx) => {
@@ -266,113 +252,37 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [viewMode, setViewMode] = useState("bars");
 
-  /* parsed */
-  const nla = clamp(P(f.nla));
-  const addon = clamp(P(f.addon));
-  const rent = clamp(P(f.rent));
-  const duration = Math.max(0, Math.floor(P(f.duration)));
-  const rf = clamp(P(f.rf));
-  const agent = clamp(P(f.agent));
-  const unforeseen = clamp(P(f.unforeseen));
+  /* parsed + derived Werte ... (gekürzt für Übersicht) */
 
-  /* derived */
-  const gla = useMemo(() => nla * (1 + addon / 100), [nla, addon]);
-  const months = Math.max(0, duration - rf);
-  const gross = rent * gla * months;
+  // (==> Belasse deine Berechnungen ner1–ner4, wfData, etc. unverändert)
 
-  const perNLA = clamp(P(f.fitPerNLA));
-  const perGLA = clamp(P(f.fitPerGLA));
-  const tot = clamp(P(f.fitTot));
+  /* ---------- UI ---------- */
+  return (
+    <div style={{ backgroundColor: "#005CA9" }}>
+      <div ref={pageRef} className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md">
+        <h2 className="text-3xl font-bold mb-2 text-center" style={{ color: "#005CA9" }}>
+          Net Effective Rent (NER) Calculator
+        </h2>
 
-  /* sync fit-outs */
-  useEffect(() => {
-    const nNLA = clamp(P(f.fitPerNLA));
-    const nGLA = clamp(P(f.fitPerGLA));
-    const nTot = clamp(P(f.fitTot));
-    if (f.fitMode === "perNLA") {
-      const t = nNLA * nla;
-      const g = gla > 0 ? t / gla : 0;
-      if (Math.abs(t - nTot) > 1e-9) S("fitTot")(String(t));
-      if (Math.abs(g - nGLA) > 1e-9) S("fitPerGLA")(String(g));
-    } else if (f.fitMode === "perGLA") {
-      const t = nGLA * gla;
-      const n = nla > 0 ? t / nla : 0;
-      if (Math.abs(t - nTot) > 1e-9) S("fitTot")(String(t));
-      if (Math.abs(n - nNLA) > 1e-9) S("fitPerNLA")(String(n));
-    } else {
-      const n = nla > 0 ? nTot / nla : 0;
-      const g = gla > 0 ? nTot / gla : 0;
-      if (Math.abs(n - nNLA) > 1e-9) S("fitPerNLA")(String(n));
-      if (Math.abs(g - nGLA) > 1e-9) S("fitPerGLA")(String(g));
-    }
-  }, [f.fitMode, f.nla, f.addon, f.fitPerNLA, f.fitPerGLA, f.fitTot]);
+        {/* Headline Rent Banner */}
+        <div className="mt-4">
+          <div className="rounded-lg ring-1 ring-sky-300 bg-sky-50 px-4 py-2 flex items-center justify-between">
+            <div className="text-sky-700 font-bold text-sm">🏢 Headline Rent</div>
+            <div className="text-lg font-bold text-gray-900">{F(rent, 2)} €/sqm</div>
+          </div>
+        </div>
 
-  const totalFit = f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
-  const agentFees = agent * rent * gla;
-  const denom = Math.max(1e-9, duration * gla);
+        {/* ... Rest deines Codes (Inputs, Charts, Export, Final NER Banner) ... */}
 
-  const ner1 = gross / denom;
-  const ner2 = (gross - totalFit) / denom;
-  const ner3 = (gross - totalFit - agentFees) / denom;
-  const ner4 = (gross - totalFit - agentFees - unforeseen) / denom;
-
-  const totalHeadline = rent * gla * duration;
-  const totalRentFrees = rent * gla * rf;
-  const totalAgentFees = agentFees;
-  const totalUnforeseen = unforeseen;
-
-  /* charts */
-  const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"];
-
-  const nerBars = [
-    { label: "Headline", val: rent, pct: null, color: "#065f46" },
-    { label: "NER 1", val: ner1, pct: rent > 0 ? ((ner1 - rent) / rent) * 100 : null, color: NER_COLORS[0] },
-    { label: "NER 2", val: ner2, pct: rent > 0 ? ((ner2 - rent) / rent) * 100 : null, color: NER_COLORS[1] },
-    { label: "NER 3", val: ner3, pct: rent > 0 ? ((ner3 - rent) / rent) * 100 : null, color: NER_COLORS[2] },
-    { label: "Final", val: ner4, pct: rent > 0 ? ((ner4 - rent) / rent) * 100 : null, color: NER_COLORS[3] },
-  ].map((d) => ({ name: d.label, sqm: safe(d.val), pct: Number.isFinite(d.pct) ? d.pct : null, color: d.color }));
-
-  // Waterfall-Deltas (€/sqm)
-  const dRF = safe(ner1 - rent);
-  const dFO = safe(ner2 - ner1);
-  const dAF = safe(ner3 - ner2);
-  const dUC = safe(ner4 - ner3);
-
-  // Waterfall-Daten sequentiell
-  let cur = safe(rent);
-  const wfData = [];
-  wfData.push({ name: "Headline", base: 0, delta: cur, isTotal: true });
-  wfData.push({ name: "RF", base: cur, delta: dRF, isTotal: false }); cur += dRF;
-  wfData.push({ name: "FO", base: cur, delta: dFO, isTotal: false }); cur += dFO;
-  wfData.push({ name: "AF", base: cur, delta: dAF, isTotal: false }); cur += dAF;
-  wfData.push({ name: "UC", base: cur, delta: dUC, isTotal: false }); cur += dUC;
-  wfData.push({ name: "Final NER", base: 0, delta: cur, isTotal: true });
-
-  /* export refs */
-  const pageRef = useRef(null);
-  const resultsContentRef = useRef(null);
-
-  const exportNode = async (node, filename) => {
-    if (!node) return;
-    try {
-      setIsExporting(true);
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      const rect = node.getBoundingClientRect();
-      const pad = 24;
-      const w = Math.ceil(rect.width) + pad * 2;
-      const h = Math.ceil(rect.height) + pad * 2;
-      const dataUrl = await toPng(node, {
-        cacheBust: true,
-        pixelRatio: 3,
-        backgroundColor: "#ffffff",
-        width: w,
-        height: h,
-        canvasWidth: w,
-        canvasHeight: h,
-        style: { padding: `${pad}px`, margin: "0", overflow: "visible", boxShadow: "none", borderRadius: "0" },
-      });
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = filename;
-      a.click();
-    } catch (e) {
+        {/* Final NER Banner */}
+        <div className="mt-6">
+          <div className="rounded-2xl ring-2 ring-sky-500 bg-sky-50 px-5 py-3 flex items-center justify-between shadow-sm">
+            <div className="text-sky-700 font-extrabold text-base">🏁 Final NER</div>
+            <div className="text-2xl font-extrabold tracking-tight text-gray-900">{F(ner4, 2)} €/sqm</div>
+            <div className="ml-4 text-sm"><Delta base={rent} val={ner4} /></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
