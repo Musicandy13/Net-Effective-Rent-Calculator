@@ -14,8 +14,8 @@ import { toPng } from "html-to-image";
 
 /* ---- NUR DIESE 3 ZAHLEN ANPASSEN, um die Legenden zu verschieben ---- */
 const BASE_H = 10; // X-Achsenhöhe (Bars & Waterfall)
-const BASE_B = 0; // bottom margin (Bars & Waterfall)
-const FIT_EXTRA = -20; // Fit-Outs zusätzlich tiefer als Bars/Waterfall (0 = gleiche Linie)
+const BASE_B = -5; // bottom margin (Bars & Waterfall)
+const FIT_EXTRA = -25; // Fit-Outs zusätzlich tiefer als Bars/Waterfall (0 = gleiche Linie)
 /* --------------------------------------------------------------------- */
 
 /* Fixe Y-Position für die Top-Labels im Waterfall (Pixel ab Plot-Top) */
