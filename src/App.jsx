@@ -13,9 +13,9 @@ import {
 import { toPng } from "html-to-image";
 
 /* ---- Steuerung für Legendenposition ---- */
-const BASE_H = 20; 
-const BASE_B = 10; 
-const FIT_EXTRA = -27; 
+const BASE_H = 20;
+const BASE_B = 10;
+const FIT_EXTRA = -27;
 /* --------------------------------------- */
 
 /* Fixe Y-Position für die Top-Labels im Waterfall */
@@ -223,7 +223,7 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [viewMode, setViewMode] = useState("bars");
 
-  /* parsed */
+  /* parsed values */
   const nla = clamp(P(f.nla));
   const addon = clamp(P(f.addon));
   const rent = clamp(P(f.rent));
@@ -232,7 +232,7 @@ export default function App() {
   const agent = clamp(P(f.agent));
   const unforeseen = clamp(P(f.unforeseen));
 
-  /* derived */
+  /* derived values */
   const gla = useMemo(() => nla * (1 + addon / 100), [nla, addon]);
   const months = Math.max(0, duration - rf);
   const gross = rent * gla * months;
@@ -395,12 +395,6 @@ export default function App() {
           {/* RIGHT: Results */}
           <div className="md:sticky md:top-6 h-fit">
             <div className="rounded-lg border p-4 space-y-2 bg-white">
-              {/* Export-Buttons */}
-              <div className="flex gap-2 justify-end">
-                <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Results PNG</button>
-                <button onClick={() => exportNode(pageRef.current, "ner-full.png")} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Full PNG</button>
-              </div>
-
               {/* Inhalte */}
               <div ref={resultsContentRef}>
                 {f.tenant.trim() && (
@@ -465,8 +459,14 @@ export default function App() {
                     <div className="ml-4 text-sm"><Delta base={rent} val={ner4} /></div>
                   </div>
                 </div>
-
               </div>
+
+              {/* Export buttons moved BELOW Final NER */}
+              <div className="flex gap-2 justify-end mt-4">
+                <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Results PNG</button>
+                <button onClick={() => exportNode(pageRef.current, "ner-full.png")} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Full PNG</button>
+              </div>
+
             </div>
           </div>
         </div>
