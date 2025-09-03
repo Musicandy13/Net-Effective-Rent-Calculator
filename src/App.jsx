@@ -398,7 +398,7 @@ export default function App() {
               {/* Inhalte */}
               <div ref={resultsContentRef}>
                 {f.tenant.trim() && (
-                  <div className="mb-4">
+                  <div className="mb-1">
                     <span className="text-xl font-bold">Tenant: <u>{f.tenant.trim()}</u></span>
                   </div>
                 )}
