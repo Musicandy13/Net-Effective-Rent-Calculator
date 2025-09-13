@@ -475,7 +475,7 @@ export default function App() {
                         <XAxis dataKey="name" tick={false} axisLine={false} tickLine={false} height={Math.max(0, BASE_H + FIT_EXTRA)} />
                         <YAxis hide />
                         <Tooltip formatter={(v) => FCUR0(v)} />
-                        <Bar dataKey="eur" fill="#c2410c" barSize={40} isAnimationActive={!isExporting}>
+                        <Bar dataKey="eur" fill="#00E7E2" barSize={40} isAnimationActive={!isExporting}>
                           <LabelList content={<VerticalMoneyLabel0 />} />
                         </Bar>
                       </BarChart>
