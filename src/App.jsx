@@ -128,7 +128,16 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   if (!Number.isFinite(value)) return null;
   const cx = x + width / 2, cy = y + height / 2;
   return (
-    <text x={cx} y={cy} transform={`rotate(-90, ${cx}, ${cy})`} textAnchor="middle" dominantBaseline="middle" fill="#000000" fontSize={16} fontWeight="800">
+    <text
+      x={cx}
+      y={cy}
+      transform={`rotate(-90, ${cx}, ${cy})`}
+      textAnchor="middle"
+      dominantBaseline="middle"
+      fill="#000000"   // Grau/Schwarz für Fit-Out-Balken
+      fontSize={16}
+      fontWeight="800"
+    >
       {FCUR0(value)}
     </text>
   );
@@ -320,6 +329,7 @@ export default function App() {
   /* Export */
   const pageRef = useRef(null);
   const resultsContentRef = useRef(null);
+
   const exportNode = async (node, filename) => {
     if (!node) return;
     try {
@@ -339,16 +349,16 @@ export default function App() {
         canvasHeight: h,
         style: { padding: `${pad}px`, margin: "0", overflow: "visible", boxShadow: "none", borderRadius: "0" },
       });
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = filename;
-      a.click();
+      // 👉 Öffne im neuen Tab/Fenster → User bekommt Speichern-Dialog
+      const win = window.open();
+      win.document.write(`<iframe src="${dataUrl}" frameborder="0" style="border:0;top:0;left:0;width:100%;height:100%;" allowfullscreen></iframe>`);
     } catch (e) {
       console.error("PNG export failed", e);
     } finally {
       setIsExporting(false);
     }
   };
+
   const exportResultsPNG = async () => {
     if (!resultsContentRef.current) return;
     const fname = f.tenant?.trim() ? `${f.tenant.trim()}-results.png` : "ner-results.png";
@@ -377,11 +387,8 @@ export default function App() {
 </html>`;
     const blob = new Blob([content], { type: "text/html" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${tenant}.html`;
-    a.click();
-    URL.revokeObjectURL(url);
+    // 👉 Öffne auch hier im neuen Tab statt auto-Download
+    window.open(url, "_blank");
   };
 
   /* ---------- UI ---------- */
@@ -396,7 +403,13 @@ export default function App() {
         {/* Tenant */}
         <div className="mb-4 flex justify-center">
           <div className="w-full md:w-1/2">
-            <input type="text" value={f.tenant} onChange={(e) => S("tenant")(e.target.value)} placeholder="Tenant" className="mt-1 block w-full border rounded-md p-2 text-center" />
+            <input
+              type="text"
+              value={f.tenant}
+              onChange={(e) => S("tenant")(e.target.value)}
+              placeholder="Tenant"
+              className="mt-1 block w-full border rounded-md p-2 text-center"
+            />
           </div>
         </div>
 
@@ -408,7 +421,11 @@ export default function App() {
               <NumericField label="Add-On (%)" value={f.addon} onChange={S("addon")} />
               <label className="block">
                 <span className="text-gray-700">GLA (sqm)</span>
-                <input readOnly value={F(gla, 2)} className="mt-1 block w-full border rounded-md p-2 bg-gray-100 text-gray-600" />
+                <input
+                  readOnly
+                  value={F(gla, 2)}
+                  className="mt-1 block w-full border rounded-md p-2 bg-gray-100 text-gray-600"
+                />
               </label>
               <NumericField label="Headline Rent €/sqm" value={f.rent} onChange={S("rent")} step={0.5} />
               <NumericField label="Lease Term (months)" value={f.duration} onChange={S("duration")} format="int" />
