@@ -223,6 +223,20 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [viewMode, setViewMode] = useState("bars");
 
+  /* ✅ Fix: Inputdaten beim Laden aus ?data=... übernehmen */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const data = params.get("data");
+    if (data) {
+      try {
+        const parsed = JSON.parse(decodeURIComponent(data));
+        setF((s) => ({ ...s, ...parsed }));
+      } catch (e) {
+        console.error("Failed to parse project data:", e);
+      }
+    }
+  }, []);
+
   /* parsed values */
   const nla = clamp(P(f.nla));
   const addon = clamp(P(f.addon));
