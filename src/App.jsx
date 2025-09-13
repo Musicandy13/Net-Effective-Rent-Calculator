@@ -32,33 +32,43 @@ const FCUR = (n) =>
     style: "currency",
     currency: "EUR",
   });
-const FCUR0 = (n) =>
-  (Number.isFinite(n) ? n : 0).toLocaleString("en-US", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
 
+/* ---------- Helpers ---------- */
 function Money({ value }) {
-  const cls = value < 0 ? "text-red-600 font-medium" : "text-gray-900 font-medium";
+  const cls =
+    value < 0 ? "text-red-600 font-medium" : "text-gray-900 font-medium";
   return <span className={cls}>{FCUR(value)}</span>;
 }
 function Delta({ base, val }) {
   const pct = base > 0 ? ((val - base) / base) * 100 : 0;
-  const up = pct > 0, down = pct < 0, sign = pct > 0 ? "+" : "";
+  const up = pct > 0,
+    down = pct < 0,
+    sign = pct > 0 ? "+" : "";
   return (
-    <span className={`${down ? "text-red-600" : up ? "text-green-600" : "text-gray-500"} font-medium ml-2`}>
-      {down ? "▼" : up ? "▲" : "■"} {sign}{F(pct, 2)}%
+    <span
+      className={`${
+        down ? "text-red-600" : up ? "text-green-600" : "text-gray-500"
+      } font-medium ml-2`}
+    >
+      {down ? "▼" : up ? "▲" : "■"} {sign}
+      {F(pct, 2)}%
     </span>
   );
 }
 
 /* ---------- Input-Feld ---------- */
-function NumericField({ label, value, onChange, format = "2dec", step = 1, min = 0, readOnly = false, suffix }) {
+function NumericField({
+  label,
+  value,
+  onChange,
+  step = 1,
+  min = 0,
+  readOnly = false,
+  suffix,
+}) {
   const [focus, setFocus] = useState(false);
   const num = P(value);
-  const show = focus ? value : format === "int" ? F(num, 0) : format === "1dec" ? F(num, 1) : F(num, 2);
+  const show = focus ? value : F(num, 2);
   return (
     <label className="block">
       <span className="text-gray-700">{label}</span>
@@ -76,8 +86,12 @@ function NumericField({ label, value, onChange, format = "2dec", step = 1, min =
             const n = clamp(P(e.target.value), min);
             onChange(String(n));
           }}
-          onChange={(e) => onChange(e.target.value.replace(/[^\d.,-]/g, ""))}
-          className={`mt-1 block w-full border rounded-md p-2 pr-16 ${readOnly ? "bg-gray-100 text-gray-600" : ""}`}
+          onChange={(e) =>
+            onChange(e.target.value.replace(/[^\d.,-]/g, ""))
+          }
+          className={`mt-1 block w-full border rounded-md p-2 ${
+            readOnly ? "bg-gray-100 text-gray-600" : ""
+          }`}
         />
         {suffix && (
           <span className="absolute inset-y-0 right-3 top-1/2 -translate-y-1/2 text-gray-500">
@@ -89,39 +103,28 @@ function NumericField({ label, value, onChange, format = "2dec", step = 1, min =
   );
 }
 
-/* ---------- Chart Labels ---------- */
-const BarNumberLabel = ({ x, y, width, height, value }) => {
-  if (!Number.isFinite(value)) return null;
-  const cx = x + width / 2, cy = y + height / 2;
-  return (
-    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" fill="#ffffff" fontSize={12} fontWeight="800">
-      {F(value, 2)}
-    </text>
-  );
-};
-const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
-  if (!Number.isFinite(value)) return null;
-  const cx = x + width / 2, cy = y + height / 2;
-  return (
-    <text x={cx} y={cy} transform={`rotate(-90, ${cx}, ${cy})`} textAnchor="middle" dominantBaseline="middle" fill="#ffffff" fontSize={16} fontWeight="800">
-      {FCUR0(value)}
-    </text>
-  );
-};
-
 /* ---------- Charts ---------- */
-function BarsChart({ data, isExporting }) {
+function BarsChart({ data }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} margin={{ top: 28, right: 6, bottom: 10, left: 6 }}>
-        <XAxis dataKey="name" height={20} tick={{ fontSize: 12, fontWeight: 700 }} />
+      <BarChart
+        data={data}
+        barCategoryGap={18}
+        margin={{ top: 28, right: 6, bottom: 20, left: 6 }}
+      >
+        <XAxis dataKey="name" height={20} tick={{ fontSize: 12 }} />
         <YAxis hide />
-        <Tooltip formatter={(v, n) => (n === "sqm" ? `${F(v, 2)} €/sqm` : `${F(v, 2)}%`)} />
+        <Tooltip formatter={(v) => `${F(v, 2)} €/sqm`} />
         <ReferenceLine y={0} />
-        <Bar dataKey="sqm" barSize={36} isAnimationActive={!isExporting}>
-          <LabelList dataKey="sqm" content={<BarNumberLabel />} />
+        <Bar dataKey="sqm" barSize={36}>
+          <LabelList dataKey="sqm" position="center" />
           {data.map((e, i) => (
-            <Cell key={i} fill={e.color} stroke={e.name === "Final" ? "#dc2626" : undefined} strokeWidth={e.name === "Final" ? 2 : undefined} />
+            <Cell
+              key={i}
+              fill={e.color}
+              stroke={e.name === "Final" ? "#dc2626" : undefined}
+              strokeWidth={e.name === "Final" ? 2 : undefined}
+            />
           ))}
         </Bar>
       </BarChart>
@@ -132,24 +135,19 @@ function BarsChart({ data, isExporting }) {
 /* ---------- App ---------- */
 export default function App() {
   const [f, setF] = useState({
-    tenant: "Tenant",
+    tenant: "",
     nla: "1000",
     addon: "5.00",
     rent: "15.00",
     duration: "60",
     rf: "5.0",
     agent: "2.0",
-    fitMode: "perNLA",
     fitPerNLA: "300.00",
-    fitPerGLA: "",
-    fitTot: "300000.00",
     unforeseen: "0",
   });
   const S = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
 
-  const [isExporting, setIsExporting] = useState(false);
-  const [viewMode, setViewMode] = useState("bars");
-
+  /* parsed values */
   const nla = clamp(P(f.nla));
   const addon = clamp(P(f.addon));
   const rent = clamp(P(f.rent));
@@ -157,16 +155,13 @@ export default function App() {
   const rf = clamp(P(f.rf));
   const agent = clamp(P(f.agent));
   const unforeseen = clamp(P(f.unforeseen));
-  const gla = nla * (1 + addon / 100);
 
+  /* derived values */
+  const gla = useMemo(() => nla * (1 + addon / 100), [nla, addon]);
   const months = Math.max(0, duration - rf);
   const gross = rent * gla * months;
 
-  const perNLA = clamp(P(f.fitPerNLA));
-  const perGLA = clamp(P(f.fitPerGLA));
-  const tot = clamp(P(f.fitTot));
-  const totalFit = f.fitMode === "perNLA" ? perNLA * nla : f.fitMode === "perGLA" ? perGLA * gla : tot;
-
+  const totalFit = clamp(P(f.fitPerNLA)) * nla;
   const agentFees = agent * rent * gla;
   const denom = Math.max(1e-9, duration * gla);
 
@@ -180,104 +175,174 @@ export default function App() {
   const totalAgentFees = agentFees;
   const totalUnforeseen = unforeseen;
 
-  const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"];
+  /* Charts */
   const nerBars = [
-    { name: "Headline", sqm: rent, pct: null, color: "#065f46" },
-    { name: "NER 1", sqm: ner1, pct: null, color: NER_COLORS[0] },
-    { name: "NER 2", sqm: ner2, pct: null, color: NER_COLORS[1] },
-    { name: "NER 3", sqm: ner3, pct: null, color: NER_COLORS[2] },
-    { name: "Final", sqm: ner4, pct: null, color: NER_COLORS[3] },
+    { name: "Headline", sqm: rent, color: "#065f46" },
+    { name: "NER 1", sqm: ner1, color: "#2563eb" },
+    { name: "NER 2", sqm: ner2, color: "#3b82f6" },
+    { name: "NER 3", sqm: ner3, color: "#60a5fa" },
+    { name: "Final", sqm: ner4, color: "#0ea5e9" },
   ];
 
-  /* Export PNG */
+  /* Export PNG with filename prompt */
   const pageRef = useRef(null);
   const resultsContentRef = useRef(null);
-  const exportNode = async (node, filename) => {
+
+  const exportNode = async (node, defaultName) => {
     if (!node) return;
     try {
-      setIsExporting(true);
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      const dataUrl = await toPng(node, { cacheBust: true, pixelRatio: 3, backgroundColor: "#ffffff" });
+      const dataUrl = await toPng(node, {
+        cacheBust: true,
+        pixelRatio: 3,
+        backgroundColor: "#ffffff",
+      });
+
+      const baseName = f.tenant?.trim() || defaultName;
+      const name =
+        prompt("Bitte Dateiname eingeben:", baseName) || baseName;
+
       const a = document.createElement("a");
       a.href = dataUrl;
-      a.download = filename;
+      a.download = `${name}.png`;
       a.click();
     } catch (e) {
       console.error("PNG export failed", e);
-    } finally {
-      setIsExporting(false);
     }
   };
-  const exportResultsPNG = () => exportNode(resultsContentRef.current, "ner-results.png");
-  const exportFullPNG = () => exportNode(pageRef.current, "ner-full.png");
+
+  const exportResultsPNG = () =>
+    exportNode(resultsContentRef.current, "ner-results");
+  const exportFullPNG = () =>
+    exportNode(pageRef.current, "ner-full");
 
   /* Export Project as HTML */
   const exportProjectHTML = () => {
-    const name = prompt("Bitte Dateiname eingeben:", f.tenant || "ner-project");
-    if (!name) return;
-
-    const html = `
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <title>NER Project - ${f.tenant}</title>
-    <script>
-      window.NER_PROJECT = ${JSON.stringify(f)};
-      window.onload = function() {
-        // Weiterleitung auf deine App mit Query-Parametern
-        const data = encodeURIComponent(JSON.stringify(window.NER_PROJECT));
-        window.location.href = "https://net-effective-rent-calculator.vercel.app/?data=" + data;
-      }
-    </script>
-  </head>
-  <body>
-    <p>Loading project <b>${f.tenant}</b>...</p>
-  </body>
-</html>`;
+    const params = new URLSearchParams(f).toString();
+    const html = `<html><head><meta http-equiv="refresh" content="0; url=?${params}"></head><body></body></html>`;
     const blob = new Blob([html], { type: "text/html" });
     const a = document.createElement("a");
+    const filename = (f.tenant?.trim() || "ner-project") + ".html";
     a.href = URL.createObjectURL(blob);
-    a.download = `${name}.html`;
+    a.download = filename;
     a.click();
   };
 
+  /* ---------- UI ---------- */
   return (
-    <div style={{ backgroundColor: "#005CA9" }}>
-      <div ref={pageRef} className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md">
-        <h2 className="text-3xl font-bold mb-2 text-center" style={{ color: "#005CA9" }}>
-          Net Effective Rent (NER) Calculator
-        </h2>
+    <div
+      ref={pageRef}
+      className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md"
+    >
+      <h2 className="text-3xl font-bold mb-4 text-center text-blue-800">
+        Net Effective Rent (NER) Calculator
+      </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* LEFT: Inputs */}
-          <div className="space-y-4">
-            <NumericField label="NLA (sqm)" value={f.nla} onChange={S("nla")} />
-            <NumericField label="Add-On (%)" value={f.addon} onChange={S("addon")} />
-            <NumericField label="Headline Rent €/sqm" value={f.rent} onChange={S("rent")} />
-            <NumericField label="Lease Term (months)" value={f.duration} onChange={S("duration")} />
-            <NumericField label="Rent-Free (months)" value={f.rf} onChange={S("rf")} />
-            <NumericField label="Agent Fees (months)" value={f.agent} onChange={S("agent")} />
-            <NumericField label="Unforeseen Costs (€)" value={f.unforeseen} onChange={S("unforeseen")} />
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Inputs */}
+        <div className="space-y-4">
+          <NumericField label="NLA (sqm)" value={f.nla} onChange={S("nla")} />
+          <NumericField
+            label="Add-On (%)"
+            value={f.addon}
+            onChange={S("addon")}
+          />
+          <NumericField
+            label="Headline Rent €/sqm"
+            value={f.rent}
+            onChange={S("rent")}
+          />
+          <NumericField
+            label="Lease Term (months)"
+            value={f.duration}
+            onChange={S("duration")}
+          />
+          <NumericField
+            label="Rent-Free (months)"
+            value={f.rf}
+            onChange={S("rf")}
+          />
+          <NumericField
+            label="Agent Fees (months)"
+            value={f.agent}
+            onChange={S("agent")}
+          />
+          <NumericField
+            label="Unforeseen Costs (€)"
+            value={f.unforeseen}
+            onChange={S("unforeseen")}
+          />
+        </div>
 
-          {/* RIGHT: Results */}
-          <div className="md:sticky md:top-6 h-fit">
-            <div className="rounded-lg border p-4 space-y-2 bg-white">
-              <div ref={resultsContentRef}>
-                <div className="font-bold">Headline Rent: {F(rent, 2)} €/sqm</div>
-                <div>Total Headline Rent: <Money value={totalHeadline} /></div>
-                <div>Total Rent Frees: <Money value={-totalRentFrees} /></div>
-                <div>Total Agent Fees: <Money value={-totalAgentFees} /></div>
-                <div>Unforeseen Costs: <Money value={-totalUnforeseen} /></div>
-              </div>
-
-              <div className="mt-4 flex gap-2 justify-end">
-                <button onClick={exportResultsPNG} className="px-3 py-1.5 border rounded">Export Results PNG</button>
-                <button onClick={exportFullPNG} className="px-3 py-1.5 border rounded">Export Full PNG</button>
-                <button onClick={exportProjectHTML} className="px-3 py-1.5 border rounded">Export Project HTML</button>
+        {/* Results */}
+        <div className="rounded-lg border p-4 space-y-2 bg-white">
+          <div ref={resultsContentRef}>
+            <div className="mt-1 rounded-xl ring-2 ring-blue-300 bg-blue-50 px-4 py-2 flex items-center justify-between shadow-sm mb-3">
+              <div className="font-bold text-lg">Headline Rent</div>
+              <div className="text-lg font-extrabold tracking-tight text-gray-900">
+                {F(rent, 2)} €/sqm
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
+              <div>Total Headline Rent</div>
+              <div className="text-right">
+                <Money value={totalHeadline} />
+              </div>
+              <div>Total Rent Frees</div>
+              <div className="text-right">
+                <Money value={-totalRentFrees} />
+              </div>
+              <div>Total Agent Fees</div>
+              <div className="text-right">
+                <Money value={-totalAgentFees} />
+              </div>
+              <div>Unforeseen Costs</div>
+              <div className="text-right">
+                <Money value={-totalUnforeseen} />
+              </div>
+            </div>
+
+            {/* Charts */}
+            <div className="h-64">
+              <BarsChart data={nerBars} />
+            </div>
+
+            {/* Final NER */}
+            <div className="mt-4 border-t pt-3">
+              <div className="mt-3 rounded-2xl ring-2 ring-sky-500 bg-sky-50 px-5 py-3 flex items-center justify-between shadow-md">
+                <div className="text-sky-700 font-extrabold text-base">
+                  🏁 Final NER
+                </div>
+                <div className="text-2xl font-extrabold tracking-tight text-gray-900">
+                  {F(ner4, 2)} €/sqm
+                </div>
+                <div className="ml-4 text-sm">
+                  <Delta base={rent} val={ner4} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Export buttons */}
+          <div className="flex gap-2 justify-end mt-4">
+            <button
+              onClick={exportResultsPNG}
+              className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm"
+            >
+              Export Results PNG
+            </button>
+            <button
+              onClick={exportFullPNG}
+              className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm"
+            >
+              Export Full PNG
+            </button>
+            <button
+              onClick={exportProjectHTML}
+              className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm"
+            >
+              Export Project HTML
+            </button>
           </div>
         </div>
       </div>
