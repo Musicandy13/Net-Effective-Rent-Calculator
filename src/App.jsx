@@ -128,7 +128,7 @@ const VerticalMoneyLabel0 = ({ x, y, width, height, value }) => {
   if (!Number.isFinite(value)) return null;
   const cx = x + width / 2, cy = y + height / 2;
   return (
-    <text x={cx} y={cy} transform={`rotate(-90, ${cx}, ${cy})`} textAnchor="middle" dominantBaseline="middle" fill="#ffffff" fontSize={16} fontWeight="800">
+    <text x={cx} y={cy} transform={`rotate(-90, ${cx}, ${cy})`} textAnchor="middle" dominantBaseline="middle" fill="#000000" fontSize={16} fontWeight="800">
       {FCUR0(value)}
     </text>
   );
