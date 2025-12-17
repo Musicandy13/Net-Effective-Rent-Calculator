@@ -610,13 +610,13 @@ export default function App() {
 
       {/* Scenarios 2–4 */}
       {scenarios.map((sc, idx) => (
-        <div key={sc.id} className="p-1">
-          <NumericField
-            value={resolveScenario(sc, key)}
-            onChange={(v) => setScenarioVal(sc.id, key, v)}
-            dataCol={idx + 2}
-          />
-        </div>
+        <div className={key === "rent" ? "font-bold" : ""}>
+  <NumericField
+    value={resolveScenario(sc, key)}
+    onChange={(v) => setScenarioVal(sc.id, key, v)}
+    dataCol={idx + 2}
+  />
+</div>
       ))}
 
     </div>
