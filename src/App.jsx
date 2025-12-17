@@ -310,28 +310,30 @@ export default function App() {
   const ner4 = (gross - totalFit - agentFees - unforeseen) / denom;
 
     /* ================= Scenario Final NER ================= */
-const calcScenarioFinalNER = (vals) => {
-  const rentS = clamp(P(vals.rent));
-  const durationS = Math.max(0, Math.floor(P(vals.duration)));
-  const rfS = clamp(P(vals.rf));
-  const agentS = clamp(P(vals.agent));
-  const unforeseenS = clamp(P(vals.unforeseen));
 
-  const monthsS = Math.max(0, durationS - rfS);
-  const grossS = rentS * gla * monthsS;
+  const calcScenarioFinalNER = (vals) => {
+  const rents = clamp(P(vals.rent));
+  const durations = Math.max(0, Math.floor(P(vals.duration)));
+  const rfs = clamp(P(vals.rf));
+  const agents = clamp(P(vals.agent));
+  const unforeseens = clamp(P(vals.unforeseen));
 
-  const fitS =
+  const monthss = Math.max(0, durations - rfs);
+  const grossS = rents * gla * monthss;
+
+  const fits =
     f.fitMode === "perNLA"
       ? clamp(P(vals.fitPerNLA)) * nla
       : f.fitMode === "perGLA"
       ? clamp(P(vals.fitPerGLA)) * gla
       : clamp(P(vals.fitTot));
 
-  const agentFeesS = agentS * rentS * gla;
-  const denomS = Math.max(1e-9, durationS * gla);
+  const agentFeesS = agents * rents * gla;
+  const denomS = Math.max(1e-9, durations * gla);
 
   return (grossS - fits - agentFeesS - unforeseens) / denomS;
 };
+
 
 
   const totalHeadline = rent * gla * duration;
