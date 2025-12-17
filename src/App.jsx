@@ -662,7 +662,7 @@ const calcScenarioNER = (vals) => {
 
       {/* Scenario 1 (baseline, locked) */}
       <div className="p-2">
-        <ScenarioCell
+        <ScenarioField … />
           value={f[key]}
           readOnly
           bold={key === "rent"}
@@ -672,7 +672,7 @@ const calcScenarioNER = (vals) => {
       {/* Scenarios 2–4 (editable) */}
       {scenarios.map((sc) => (
         <div key={sc.id} className="p-2">
-          <ScenarioCell
+         <ScenarioField … />
             value={resolveScenario(sc, key)}
             onChange={(v) => setScenarioVal(sc.id, key, v)}
             bold={key === "rent"}
