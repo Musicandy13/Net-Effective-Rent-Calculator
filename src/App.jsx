@@ -603,7 +603,9 @@ export default function App() {
 
       {/* Scenario 1 (locked) */}
 <div className="p-2 text-right tabular-nums bg-gray-100 flex items-center justify-end">
-        {F(P(f[key]), 2)}
+        <span className={key === "rent" ? "font-bold" : ""}>
+  {F(P(f[key]), 2)}
+</span>
       </div>
 
       {/* Scenarios 2–4 */}
