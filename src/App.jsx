@@ -244,9 +244,6 @@ export default function App() {
   const resolveScenario = (sc, key) =>
     sc?.overrides?.[key] ?? f[key];
 
-  /* ---------- existing state ---------- */
-  const [isExporting, setIsExporting] = useState(false);
-  const [viewMode, setViewMode] = useState("bars");
 
   /* ✅ Fix: Inputdaten beim Laden aus ?data=... übernehmen */
   useEffect(() => {
