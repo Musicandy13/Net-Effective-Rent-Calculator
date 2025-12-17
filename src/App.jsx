@@ -671,9 +671,23 @@ return (
     </div>
   </div>
 
-  <div className="mt-6 border rounded-lg overflow-hidden">
-    {/* Scenario table will be inserted here */}
+ <div className="mt-6 border rounded-lg overflow-hidden p-4">
+  <div className="font-bold mb-2">Scenarios (preview)</div>
+
+  <div className="space-y-1 text-sm">
+    <div className="flex justify-between font-semibold">
+      <span>Baseline</span>
+      <span>{F(ner4, 2)} €/sqm</span>
+    </div>
+
+    {scenarioView.map((s) => (
+      <div key={s.id} className="flex justify-between">
+        <span>Scenario {s.id}</span>
+        <span>{F(s.ner, 2)} €/sqm</span>
+      </div>
+    ))}
   </div>
+</div>
 
 </div>
 </div>
