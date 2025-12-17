@@ -83,11 +83,12 @@ function NumericField({
   step = 1,
   min = 0,
   readOnly = false,
+  onCommit,
   suffix,
-  dataScenario,
 }) {
   const [focus, setFocus] = useState(false);
   const num = P(value);
+
   const show = focus
     ? value
     : format === "int"
@@ -98,36 +99,24 @@ function NumericField({
 
   return (
     <label className="block">
-      {label && <span className="text-gray-700">{label}</span>}
+      <span className="text-gray-700">{label}</span>
       <div className="relative">
         <input
-          type={focus ? "number" : "text"}
-          inputMode={focus ? "decimal" : "text"}
+          type="text"
+          inputMode="decimal"
           value={show}
-          min={min}
-          step={step}
-          readOnly={readOnly && !focus}
-          data-scenario={dataScenario}
+          readOnly={readOnly}
           onFocus={() => setFocus(true)}
           onBlur={(e) => {
             setFocus(false);
             const n = clamp(P(e.target.value), min);
             onChange(String(n));
+            onCommit?.(n);
           }}
           onChange={(e) =>
             onChange(e.target.value.replace(/[^\d.,-]/g, ""))
           }
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === "ArrowDown") {
-              e.preventDefault();
-              const inputs = Array.from(
-                document.querySelectorAll("input[data-scenario]")
-              );
-              const idx = inputs.indexOf(e.target);
-              inputs[idx + 1]?.focus();
-            }
-          }}
-          className={`mt-1 block w-full border rounded-md p-2 pr-16 text-right tabular-nums ${
+          className={`mt-1 block w-full border rounded-md p-2 pr-16 ${
             readOnly ? "bg-gray-100 text-gray-600" : ""
           }`}
         />
@@ -140,7 +129,6 @@ function NumericField({
     </label>
   );
 }
-
 
 function ScenarioCell({
   value,
