@@ -68,19 +68,14 @@ function Delta({ base, val }) {
 function NumericField({
   value,
   onChange,
-  format = "2dec",
-  min = 0,
   readOnly = false,
+  dataCol,   // number: 2,3,4
 }) {
   const inputRef = useRef(null);
   const [editing, setEditing] = useState(false);
 
   const num = P(value);
-  const display = editing
-    ? value
-    : format === "int"
-    ? F(num, 0)
-    : F(num, 2);
+  const display = editing ? value : F(num, 2);
 
   return (
     <input
@@ -89,26 +84,40 @@ function NumericField({
       inputMode="decimal"
       value={display}
       readOnly={readOnly}
+      data-col={dataCol}
       onFocus={() => {
         setEditing(true);
         requestAnimationFrame(() => {
-          inputRef.current?.select(); // ✅ SELECT ALL
+          inputRef.current?.select(); // ✅ select all on focus
         });
       }}
       onBlur={(e) => {
         setEditing(false);
-        const n = clamp(P(e.target.value), min);
+        const n = clamp(P(e.target.value));
         onChange(String(n));
       }}
       onChange={(e) => {
         onChange(e.target.value.replace(/[^\d.,-]/g, ""));
       }}
-      className={`block w-full border rounded-md p-2 text-right ${
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+
+          // find next input in the SAME ROW
+          const next = e.target
+            .closest("tr")
+            ?.querySelector(`input[data-col="${dataCol + 1}"]`);
+
+          next?.focus();
+        }
+      }}
+      className={`block w-full border rounded-md p-2 text-right tabular-nums ${
         readOnly ? "bg-gray-100 text-gray-600" : ""
       }`}
     />
   );
 }
+
 
 /* ---------- Chart Labels ---------- */
 const PercentLabel = ({ x, y, width, value }) => {
