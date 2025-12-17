@@ -662,7 +662,7 @@ const calcScenarioNER = (vals) => {
 
       {/* Scenario 1 (baseline, locked) */}
       <div className="p-2">
-        <ScenarioField … />
+        <ScenarioField
           value={f[key]}
           readOnly
           bold={key === "rent"}
@@ -672,7 +672,7 @@ const calcScenarioNER = (vals) => {
       {/* Scenarios 2–4 (editable) */}
       {scenarios.map((sc) => (
         <div key={sc.id} className="p-2">
-         <ScenarioField … />
+         <ScenarioField
             value={resolveScenario(sc, key)}
             onChange={(v) => setScenarioVal(sc.id, key, v)}
             bold={key === "rent"}
@@ -682,6 +682,13 @@ const calcScenarioNER = (vals) => {
 
     </div>
   ))}
+
+  {/* Export buttons */}
+              <div className="flex gap-2 justify-end mt-4">
+                <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Results PNG</button>
+                <button onClick={exportFullPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Full PNG</button>
+                <button onClick={exportProjectHTML} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Project HTML</button>
+              </div>
 
   {/* Final NER row */}
   <div className="grid grid-cols-5 border-t bg-green-50 font-bold">
@@ -706,13 +713,6 @@ const calcScenarioNER = (vals) => {
   </div>
 
 </div>
-
-              {/* Export buttons */}
-              <div className="flex gap-2 justify-end mt-4">
-                <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Results PNG</button>
-                <button onClick={exportFullPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Full PNG</button>
-                <button onClick={exportProjectHTML} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Project HTML</button>
-              </div>
 
             </div>
           </div>
