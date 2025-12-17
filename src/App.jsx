@@ -529,9 +529,32 @@ return (
          style={{ boxShadow: "0 10px 25px rgba(0,0,0,.08)" }}>
 
       {/* ===== MAIN CALCULATOR CONTENT (EXPORTED IN FULL PNG) ===== */}
-      <div ref={mainContentRef}>
+<div ref={mainContentRef}>
 
-        <div className="mt-6 border rounded-lg overflow-hidden">
+  {/* Titel */}
+  <h2 className="text-3xl font-bold mb-2 text-center" style={{ color: "#005CA9" }}>
+    Net Effective Rent (NER) Calculator
+  </h2>
+
+  {/* Tenant */}
+  <div className="mb-4 flex justify-center">
+    <div className="w-full md:w-1/2">
+      <input 
+        type="text"
+        value={f.tenant}
+        onChange={(e) => S("tenant")(e.target.value)}
+        placeholder="Tenant"
+        className="mt-1 block w-full border rounded-md p-2 text-center"
+      />
+    </div>
+  </div>
+
+  {/* … rest of calculator UI continues here unchanged … */}
+
+</div>
+
+{/* ===== SCENARIO COMPARISON TABLE (BELOW CALCULATOR) ===== */}
+<div className="mt-6 border rounded-lg overflow-hidden">
   <table className="w-full text-sm border-collapse">
     <thead>
       <tr className="bg-gray-100">
@@ -606,27 +629,8 @@ return (
     </tbody>
   </table>
 </div>
-
         
-        {/* Titel */}
-        <h2 className="text-3xl font-bold mb-2 text-center" style={{ color: "#005CA9" }}>
-          Net Effective Rent (NER) Calculator
-        </h2>
-
-        {/* Tenant */}
-        <div className="mb-4 flex justify-center">
-          <div className="w-full md:w-1/2">
-            <input 
-              type="text"
-              value={f.tenant}
-              onChange={(e) => S("tenant")(e.target.value)}
-              placeholder="Tenant"
-              className="mt-1 block w-full border rounded-md p-2 text-center"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* LEFT: Inputs */}
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
