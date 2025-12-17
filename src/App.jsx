@@ -595,7 +595,7 @@ return (
         <div className="text-lg font-extrabold tracking-tight text-gray-900">{F(rent, 2)} €/sqm</div>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
+           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
         <div>Total Headline Rent</div><div className="text-right"><Money value={totalHeadline} /></div>
         <div>Total Rent Frees</div><div className="text-right"><Money value={-totalRentFrees} /></div>
         <div>Total Agent Fees</div><div className="text-right"><Money value={-totalAgentFees} /></div>
@@ -612,12 +612,14 @@ return (
 
       {/* Charts */}
       <div className="mt-2 grid grid-cols-3 gap-6">
-        {/* Fit-Outs */}
         <div className="h-60 p-2 col-span-1">
           <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={[{ name: "Fit-Outs", eur: totalFit }]} margin={{ top: 8, right: 0, bottom: Math.max(0, BASE_B + FIT_EXTRA), left: 0 }}>
-              <XAxis dataKey="name" tick={false} axisLine={false} tickLine={false} height={Math.max(0, BASE_H + FIT_EXTRA)} />
+            <BarChart
+              data={[{ name: "Fit-Outs", eur: totalFit }]}
+              margin={{ top: 8, right: 0, bottom: Math.max(0, BASE_B + FIT_EXTRA), left: 0 }}
+            >
+              <XAxis dataKey="name" tick={false} axisLine={false} tickLine={false} />
               <YAxis hide />
               <Tooltip formatter={(v) => FCUR0(v)} />
               <Bar dataKey="eur" fill="#D9D9D9" barSize={40} isAnimationActive={!isExporting}>
@@ -627,24 +629,28 @@ return (
           </ResponsiveContainer>
         </div>
 
-        {/* Bars / Waterfall */}
         <div className="h-64 p-2 col-span-2">
           <div className="flex items-center justify-between mb-1">
-            <div className="text-sm font-bold">{viewMode === "bars" ? "NER vs Headline (€/sqm)" : "Waterfall (€/sqm)"}</div>
+            <div className="text-sm font-bold">
+              {viewMode === "bars" ? "NER vs Headline (€/sqm)" : "Waterfall (€/sqm)"}
+            </div>
             <div className="text-xs">
-              <label className="mr-2"><input type="radio" checked={viewMode === "bars"} onChange={() => setViewMode("bars")} /> Bars</label>
-              <label><input type="radio" checked={viewMode === "waterfall"} onChange={() => setViewMode("waterfall")} /> Waterfall</label>
+              <label className="mr-2">
+                <input type="radio" checked={viewMode === "bars"} onChange={() => setViewMode("bars")} /> Bars
+              </label>
+              <label>
+                <input type="radio" checked={viewMode === "waterfall"} onChange={() => setViewMode("waterfall")} /> Waterfall
+              </label>
             </div>
           </div>
-          {viewMode === "bars" ? (
-            <BarsChart data={nerBars} isExporting={isExporting} />
-          ) : (
-            <WaterfallChart data={wfData} isExporting={isExporting} />
-          )}
+
+          {viewMode === "bars"
+            ? <BarsChart data={nerBars} isExporting={isExporting} />
+            : <WaterfallChart data={wfData} isExporting={isExporting} />
+          }
         </div>
       </div>
 
-      {/* Final NER Banner */}
       <div className="mt-4 border-t pt-3">
         <div className="mt-3 rounded-2xl ring-2 ring-sky-500 ring-offset-2 bg-sky-50 px-5 py-3 flex items-center justify-between shadow-md">
           <div className="text-sky-700 font-extrabold text-base">🏁 Final NER</div>
@@ -654,7 +660,6 @@ return (
       </div>
     </div>
 
-    {/* Export buttons */}
     <div className="flex gap-2 justify-end mt-4">
       <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Results PNG</button>
       <button onClick={exportFullPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Full PNG</button>
@@ -662,22 +667,15 @@ return (
     </div>
 
   </div>
-</div>
+</div>   {/* closes RIGHT column */}
+</div>   {/* closes grid */}
+</div>   {/* closes mainContentRef */}
 
-{/* ===== END MAIN CALCULATOR CONTENT ===== */}
-
-{/* !!! DAS FEHLENDE DIV !!! */}
-</div> {/* closes RIGHT column */}
-
-{/* ========= Scenario Comparison Table ========= */}
 <div className="mt-6 border rounded-lg overflow-hidden">
-  {/* scenario table code will be inserted here */}
+  {/* Scenario table will be inserted here */}
 </div>
 
-
-</div> 
-</div>  
-</div>  
-</div> 
+</div>   {/* closes pageRef container */}
+</div>   {/* closes blue background */}
 );
 }
