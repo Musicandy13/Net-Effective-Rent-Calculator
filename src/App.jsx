@@ -572,42 +572,71 @@ export default function App() {
 
               {/* ================= Scenario Comparison ================= */}
 <div className="mt-6 border rounded-lg overflow-hidden">
+
   {/* Header */}
-  <div className="grid grid-cols-5 bg-blue-700 text-white font-bold text-center">
+  <div className="grid grid-cols-5 text-center font-bold">
     <div />
-    <div className="bg-blue-900 p-2">Scenario 1</div>
-    <div className="p-2">Scenario 2</div>
-    <div className="p-2">Scenario 3</div>
-    <div className="p-2">Scenario 4</div>
+    <div className="bg-blue-900 text-white p-2">Scenario 1</div>
+    <div className="bg-blue-700 text-white p-2">Scenario 2</div>
+    <div className="bg-blue-600 text-white p-2">Scenario 3</div>
+    <div className="bg-blue-500 text-white p-2">Scenario 4</div>
   </div>
 
   {[
     ["Headline Rent (€/sqm)", "rent"],
-["Lease Term (months)", "duration"],
-["RF-Months (months)", "rf"],
-["Fit-Outs (€/sqm)", "fitPerNLA"],
-["Agent Fees (months)", "agent"],
-  ].map(([label, key, suffix]) => (
+    ["Lease Term (months)", "duration"],
+    ["RF-Months (months)", "rf"],
+    ["Fit-Outs (€/sqm)", "fitPerNLA"],
+    ["Agent Fees (months)", "agent"],
+  ].map(([label, key]) => (
     <div key={key} className="grid grid-cols-5 border-t text-sm">
-      {/* Row label */}
-      <div className="p-2 font-medium bg-gray-50">{label}</div>
 
-      {/* Scenario 1 (locked baseline) */}
-      <div className="p-2 bg-gray-100 text-center">
+      {/* Row label */}
+      <div className="p-2 font-semibold bg-gray-50">
+        {label}
+      </div>
+
+      {/* Scenario 1 (locked) */}
+      <div className="p-2 text-right font-bold tabular-nums bg-gray-100">
         {F(P(f[key]), 2)}
       </div>
 
       {/* Scenarios 2–4 */}
-{scenarios.map((sc, idx) => (
-  <div key={sc.id} className="p-1">
-    <NumericField
-      value={resolveScenario(sc, key)}
-      onChange={(v) => setScenarioVal(sc.id, key, v)}
-      dataCol={idx + 2}   // Scenario 2 → 2, Scenario 3 → 3, Scenario 4 → 4
-    />
-  </div>
-))}
+      {scenarios.map((sc, idx) => (
+        <div key={sc.id} className="p-1">
+          <NumericField
+            value={resolveScenario(sc, key)}
+            onChange={(v) => setScenarioVal(sc.id, key, v)}
+            dataCol={idx + 2}
+          />
+        </div>
+      ))}
 
+    </div>
+  ))}
+
+  {/* Final NER row */}
+  <div className="grid grid-cols-5 border-t font-bold bg-green-50">
+
+    <div className="p-2 bg-green-600 text-white">
+      NER
+    </div>
+
+    <div className="p-2 text-right tabular-nums">
+      {F(ner4, 2)} €/sqm
+    </div>
+
+    {scenarios.map(sc => {
+      const nerS = calcScenarioFinalNER({ ...f, ...sc.overrides });
+      return (
+        <div key={sc.id} className="p-2 text-right tabular-nums">
+          {F(nerS, 2)} €/sqm
+        </div>
+      );
+    })}
+
+  </div>
+</div>
 
   {/* Final NER row */}
   <div className="grid grid-cols-5 border-t bg-green-50 font-bold">
