@@ -531,6 +531,82 @@ return (
       {/* ===== MAIN CALCULATOR CONTENT (EXPORTED IN FULL PNG) ===== */}
       <div ref={mainContentRef}>
 
+        <div className="mt-6 border rounded-lg overflow-hidden">
+  <table className="w-full text-sm border-collapse">
+    <thead>
+      <tr className="bg-gray-100">
+        <th className="border px-3 py-2 text-left"></th>
+        <th className="border px-3 py-2 text-center">Scenario 1</th>
+        <th className="border px-3 py-2 text-center">Scenario 2</th>
+        <th className="border px-3 py-2 text-center">Scenario 3</th>
+        <th className="border px-3 py-2 text-center">Scenario 4</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <tr>
+        <td className="border px-3 py-2 font-medium">Headline Rent €/sqm</td>
+        <td className="border px-3 py-2 text-right">{F(rent, 2)}</td>
+        {scenarios.map((sc) => (
+          <td key={sc.id} className="border px-3 py-2 text-right">
+            {F(P(resolveScenario(sc, "rent")), 2)}
+          </td>
+        ))}
+      </tr>
+
+      <tr>
+        <td className="border px-3 py-2 font-medium">Lease Term (months)</td>
+        <td className="border px-3 py-2 text-right">{duration}</td>
+        {scenarios.map((sc) => (
+          <td key={sc.id} className="border px-3 py-2 text-right">
+            {P(resolveScenario(sc, "duration"))}
+          </td>
+        ))}
+      </tr>
+
+      <tr>
+        <td className="border px-3 py-2 font-medium">RF-Months</td>
+        <td className="border px-3 py-2 text-right">{rf}</td>
+        {scenarios.map((sc) => (
+          <td key={sc.id} className="border px-3 py-2 text-right">
+            {P(resolveScenario(sc, "rf"))}
+          </td>
+        ))}
+      </tr>
+
+      <tr>
+        <td className="border px-3 py-2 font-medium">Fit-Outs €/sqm (NLA)</td>
+        <td className="border px-3 py-2 text-right">{F(perNLA, 0)}</td>
+        {scenarios.map((sc) => (
+          <td key={sc.id} className="border px-3 py-2 text-right">
+            {F(P(resolveScenario(sc, "fitPerNLA")), 0)}
+          </td>
+        ))}
+      </tr>
+
+      <tr>
+        <td className="border px-3 py-2 font-medium">Agent Fees (months)</td>
+        <td className="border px-3 py-2 text-right">{agent}</td>
+        {scenarios.map((sc) => (
+          <td key={sc.id} className="border px-3 py-2 text-right">
+            {P(resolveScenario(sc, "agent"))}
+          </td>
+        ))}
+      </tr>
+
+      <tr className="bg-blue-50 font-bold">
+        <td className="border px-3 py-2">NER €/sqm</td>
+        <td className="border px-3 py-2 text-right">{F(ner4, 2)}</td>
+        {scenarioView.map((s) => (
+          <td key={s.id} className="border px-3 py-2 text-right">
+            {F(s.ner, 2)}
+          </td>
+        ))}
+      </tr>
+    </tbody>
+  </table>
+</div>
+
         {/* Titel */}
         <h2 className="text-3xl font-bold mb-2 text-center" style={{ color: "#005CA9" }}>
           Net Effective Rent (NER) Calculator
