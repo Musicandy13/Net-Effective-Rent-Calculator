@@ -258,6 +258,29 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [viewMode, setViewMode] = useState("bars");
 
+  /* ========= Scenario System ========= */
+const [scenarios, setScenarios] = useState([
+  { id: 2, overrides: {} },
+  { id: 3, overrides: {} },
+  { id: 4, overrides: {} },
+]);
+
+const setScenarioVal = (id, key, value) => {
+  setScenarios((arr) =>
+    arr.map((sc) =>
+      sc.id === id
+        ? { ...sc, overrides: { ...sc.overrides, [key]: value } }
+        : sc
+    )
+  );
+};
+
+const resolveScenario = (sc, key) => {
+  const v = sc.overrides[key];
+  return v !== undefined ? v : f[key];
+};
+
+
   /* ✅ Fix: Inputdaten beim Laden aus ?data=... übernehmen */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
