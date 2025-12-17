@@ -137,6 +137,32 @@ function NumericField({
   );
 }
 
+/* ========= ScenarioCell ========= */
+function ScenarioCell({ value, onChange, bold = false, readOnly = false }) {
+  const ref = useRef(null);
+
+  return (
+    <input
+      ref={ref}
+      type="text"
+      inputMode="decimal"
+      value={F(P(value), 2)}
+      readOnly={readOnly}
+      onFocus={() => {
+        requestAnimationFrame(() => ref.current?.select());
+      }}
+      onChange={(e) =>
+        onChange?.(e.target.value.replace(/[^\d.,-]/g, ""))
+      }
+      className={`
+        w-full border rounded-md p-2 text-right tabular-nums
+        ${readOnly ? "bg-gray-100 text-gray-800" : ""}
+        ${bold ? "font-bold" : ""}
+      `}
+    />
+  );
+}
+
 
 /* ---------- Chart Labels ---------- */
 const PercentLabel = ({ x, y, width, value }) => {
