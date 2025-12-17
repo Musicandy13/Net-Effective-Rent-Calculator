@@ -445,6 +445,14 @@ const calcScenarioNER = (vals) => {
   wfData.push({ name: "UC", base: cur, delta: dUC, isTotal: false }); cur += dUC;
   wfData.push({ name: "Final NER", base: 0, delta: cur, isTotal: true });
 
+  const scenarioView = scenarios.map((sc) => {
+  const vals = { ...f, ...sc.overrides };
+  return {
+    id: sc.id,
+    ner: calcScenarioNER(vals),
+  };
+});
+
   /* Export */
   const pageRef = useRef(null);
   const mainContentRef = useRef(null);
