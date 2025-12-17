@@ -223,22 +223,6 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [viewMode, setViewMode] = useState("bars");
 
-  export default function App() {
-  const [f, setF] = useState({
-    tenant: "",
-    nla: "1000",
-    addon: "5.00",
-    rent: "15.00",
-    duration: "60",
-    rf: "5.0",
-    agent: "2.0",
-    fitMode: "perNLA",
-    fitPerNLA: "300.00",
-    fitPerGLA: "",
-    fitTot: "300000.00",
-    unforeseen: "0",
-  });
-  const S = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
 
   /* ================= Scenario Overrides (2–4) ================= */
   const [scenarios, setScenarios] = useState([
