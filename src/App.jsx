@@ -514,9 +514,15 @@ const calcScenarioNER = (vals) => {
   };
 
   /* ---------- UI ---------- */
-  return (
-    <div style={{ backgroundColor: "#005CA9" }}>
-      <div ref={pageRef} className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md" style={{ boxShadow: "0 10px 25px rgba(0,0,0,.08)" }}>
+ /* ---------- UI ---------- */
+return (
+  <div style={{ backgroundColor: "#005CA9" }}>
+    <div ref={pageRef} className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md" 
+         style={{ boxShadow: "0 10px 25px rgba(0,0,0,.08)" }}>
+
+      {/* ===== MAIN CALCULATOR CONTENT (EXPORTED IN FULL PNG) ===== */}
+      <div ref={mainContentRef}>
+
         {/* Titel */}
         <h2 className="text-3xl font-bold mb-2 text-center" style={{ color: "#005CA9" }}>
           Net Effective Rent (NER) Calculator
@@ -525,7 +531,13 @@ const calcScenarioNER = (vals) => {
         {/* Tenant */}
         <div className="mb-4 flex justify-center">
           <div className="w-full md:w-1/2">
-            <input type="text" value={f.tenant} onChange={(e) => S("tenant")(e.target.value)} placeholder="Tenant" className="mt-1 block w-full border rounded-md p-2 text-center" />
+            <input 
+              type="text"
+              value={f.tenant}
+              onChange={(e) => S("tenant")(e.target.value)}
+              placeholder="Tenant"
+              className="mt-1 block w-full border rounded-md p-2 text-center"
+            />
           </div>
         </div>
 
