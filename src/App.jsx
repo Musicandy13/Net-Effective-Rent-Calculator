@@ -669,8 +669,9 @@ return (
 
 {/* ========= Scenario Comparison Table ========= */}
 <div className="mt-6 border rounded-lg overflow-hidden">
-  … SCENARIO TABLE CODE (unchanged) …
+  {/* Scenario table code will be inserted here */}
 </div>
+
 
 </div>  {/* closes the column wrapper */}
 </div>  {/* closes the main grid */}
