@@ -350,6 +350,40 @@ const resolveScenario = (sc, key) => {
   const totalAgentFees = agentFees;
   const totalUnforeseen = unforeseen;
 
+  /* ========= Scenario NER Calculation ========= */
+const calcScenarioNER = (vals) => {
+  const nlaS = clamp(P(vals.nla ?? f.nla));
+  const addonS = clamp(P(vals.addon ?? f.addon));
+  const glaS = nlaS * (1 + addonS / 100);
+
+  const rentS = clamp(P(vals.rent ?? f.rent));
+  const durationS = Math.max(0, Math.floor(P(vals.duration ?? f.duration)));
+  const rfS = clamp(P(vals.rf ?? f.rf));
+  const agentS = clamp(P(vals.agent ?? f.agent));
+  const unforeseenS = clamp(P(vals.unforeseen ?? f.unforeseen));
+
+  const monthsS = Math.max(0, durationS - rfS);
+  const grossS = rentS * glaS * monthsS;
+
+  // Fit-Out logic per scenario
+  const modeS = vals.fitMode ?? f.fitMode;
+  const perNLAS = clamp(P(vals.fitPerNLA ?? f.fitPerNLA));
+  const perGLAS = clamp(P(vals.fitPerGLA ?? f.fitPerGLA));
+  const totalS = clamp(P(vals.fitTot ?? f.fitTot));
+
+  const fitS =
+    modeS === "perNLA"
+      ? perNLAS * nlaS
+      : modeS === "perGLA"
+      ? perGLAS * glaS
+      : totalS;
+
+  const agentFeesS = agentS * rentS * glaS;
+  const denomS = Math.max(1e-9, durationS * glaS);
+
+  return (grossS - fitS - agentFeesS - unforeseenS) / denomS;
+};
+
   /* charts */
   const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"];
   const nerBars = [
