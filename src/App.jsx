@@ -100,17 +100,19 @@ function NumericField({
         onChange(e.target.value.replace(/[^\d.,-]/g, ""));
       }}
       onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
+  if (e.key === "Enter") {
+    e.preventDefault();
 
-          // find next input in the SAME ROW
-          const next = e.target
-            .closest("[class*='grid-cols-5']")
-            ?.querySelector(`input[data-col="${dataCol + 1}"]`);
+    const currentRow = e.target.closest("[data-row]");
+    const nextRow = currentRow?.nextElementSibling;
 
-          next?.focus();
-        }
-      }}
+    const next = nextRow?.querySelector(
+      `input[data-col="${dataCol}"]`
+    );
+
+    next?.focus();
+  }
+}}
       className={`block w-full border rounded-md p-2 text-right tabular-nums ${
         readOnly ? "bg-gray-100 text-gray-600" : ""
       }`}
