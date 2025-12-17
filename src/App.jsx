@@ -105,7 +105,7 @@ function NumericField({
 
           // find next input in the SAME ROW
           const next = e.target
-            .closest("tr")
+            .closest("[class*='grid-cols-5']")
             ?.querySelector(`input[data-col="${dataCol + 1}"]`);
 
           next?.focus();
