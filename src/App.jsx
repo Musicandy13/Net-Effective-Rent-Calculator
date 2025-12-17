@@ -675,9 +675,9 @@ return (
 </div>
 
 
-</div>  {/* closes the column wrapper */}
-</div>  {/* closes the main grid */}
-</div>  {/* closes the outer container */}
-</div>  {/* closes the blue background wrapper */}
+</div> 
+</div>  
+</div>  
+</div> 
 );
 }
