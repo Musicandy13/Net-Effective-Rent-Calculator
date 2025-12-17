@@ -65,68 +65,34 @@ function Delta({ base, val }) {
 }
 
 /* ---------- Input-Feld ---------- */
-// === SINGLE CHANGE ONLY ===
-// select full value on focus (like before)
 function NumericField({
-  label,
-  value,
-  onChange,
-  format = "2dec",
-  step = 1,
-  min = 0,
-  readOnly = false,
-  onCommit,
-  suffix,
+  label, value, onChange, format = "2dec", step = 1, min = 0,
+  readOnly = false, onCommit, suffix,
 }) {
   const [focus, setFocus] = useState(false);
-  const inputRef = useRef(null);
-
   const num = P(value);
-  const show = focus
-    ? value
-    : format === "int"
-    ? F(num, 0)
-    : format === "1dec"
-    ? F(num, 1)
-    : F(num, 2);
-
+  const show = focus ? value : format === "int" ? F(num, 0) : format === "1dec" ? F(num, 1) : F(num, 2);
   return (
     <label className="block">
       <span className="text-gray-700">{label}</span>
       <div className="relative">
-      <input
-  ref={inputRef}
-  type="text"
-  inputMode="decimal"
-  value={show}
-  readOnly={readOnly}
-  onFocus={() => {
-    setFocus(true);
-    requestAnimationFrame(() => {
-      inputRef.current?.select();
-    });
-  }}
-  onKeyDown={(e) => {
-    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-      e.preventDefault();
-      const delta = e.key === "ArrowUp" ? step : -step;
-      const next = clamp(P(value) + delta, min);
-      onChange(String(next));
-    }
-  }}
-  onBlur={(e) => {
-    setFocus(false);
-    const n = clamp(P(e.target.value), min);
-    onChange(String(n));
-    onCommit?.(n);
-  }}
-  onChange={(e) =>
-    onChange(e.target.value.replace(/[^\d.,-]/g, ""))
-  }
-  className={`mt-1 block w-full border rounded-md p-2 pr-16 ${
-    readOnly ? "bg-gray-100 text-gray-600" : ""
-  }`}
-/>
+        <input
+          type={focus ? "number" : "text"}
+          inputMode={focus ? "decimal" : "text"}
+          value={show}
+          min={min}
+          step={step}
+          readOnly={readOnly && !focus}
+          onFocus={() => setFocus(true)}
+          onBlur={(e) => {
+            setFocus(false);
+            const n = clamp(P(e.target.value), min);
+            onChange(String(n));
+            onCommit?.(n);
+          }}
+          onChange={(e) => onChange(e.target.value.replace(/[^\d.,-]/g, ""))}
+          className={`mt-1 block w-full border rounded-md p-2 pr-16 ${readOnly ? "bg-gray-100 text-gray-600" : ""}`}
+        />
         {suffix && (
           <span className="absolute inset-y-0 right-3 top-1/2 -translate-y-1/2 text-gray-500">
             {suffix}
@@ -134,42 +100,6 @@ function NumericField({
         )}
       </div>
     </label>
-  );
-}
-
-/* ========= ScenarioField (identical behavior to NumericField but without label) ========= */
-function ScenarioField({ value, onChange, readOnly = false, bold = false }) {
-  const [focus, setFocus] = useState(false);
-  const inputRef = useRef(null);
-
-  const num = P(value);
-  const show = focus ? value : F(num, 2);
-
-  return (
-    <input
-      ref={inputRef}
-      type="text"
-      inputMode="decimal"
-      value={show}
-      readOnly={readOnly}
-      onFocus={() => {
-        setFocus(true);
-        requestAnimationFrame(() => inputRef.current?.select());
-      }}
-      onBlur={(e) => {
-        setFocus(false);
-        const n = clamp(P(e.target.value));
-        onChange?.(String(n));
-      }}
-      onChange={(e) =>
-        onChange?.(e.target.value.replace(/[^\d.,-]/g, ""))
-      }
-      className={`
-        w-full border rounded-md p-2 text-right tabular-nums
-        ${readOnly ? "bg-gray-100 text-gray-800" : ""}
-        ${bold ? "font-bold" : ""}
-      `}
-    />
   );
 }
 
@@ -293,30 +223,6 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [viewMode, setViewMode] = useState("bars");
 
-/* ========= Scenario System ========= */
-const [scenarios, setScenarios] = useState([
-  { id: 2, overrides: {} },
-  { id: 3, overrides: {} },
-  { id: 4, overrides: {} },
-]);
-
-// Update one specific scenario field
-const setScenarioVal = (id, key, value) => {
-  setScenarios((arr) =>
-    arr.map((sc) =>
-      sc.id === id
-        ? { ...sc, overrides: { ...sc.overrides, [key]: value } }
-        : sc
-    )
-  );
-};
-
-// Return overridden value OR fallback to baseline
-const resolveScenario = (sc, key) => {
-  const v = sc.overrides[key];
-  return v !== undefined ? v : f[key];
-};
-
   /* ✅ Fix: Inputdaten beim Laden aus ?data=... übernehmen */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -386,40 +292,6 @@ const resolveScenario = (sc, key) => {
   const totalAgentFees = agentFees;
   const totalUnforeseen = unforeseen;
 
-  /* ========= Scenario NER Calculation ========= */
-const calcScenarioNER = (vals) => {
-  const nlaS = clamp(P(vals.nla ?? f.nla));
-  const addonS = clamp(P(vals.addon ?? f.addon));
-  const glaS = nlaS * (1 + addonS / 100);
-
-  const rentS = clamp(P(vals.rent ?? f.rent));
-  const durationS = Math.max(0, Math.floor(P(vals.duration ?? f.duration)));
-  const rfS = clamp(P(vals.rf ?? f.rf));
-  const agentS = clamp(P(vals.agent ?? f.agent));
-  const unforeseenS = clamp(P(vals.unforeseen ?? f.unforeseen));
-
-  const monthsS = Math.max(0, durationS - rfS);
-  const grossS = rentS * glaS * monthsS;
-
-  // Fit-Out logic per scenario
-  const modeS = vals.fitMode ?? f.fitMode;
-  const perNLAS = clamp(P(vals.fitPerNLA ?? f.fitPerNLA));
-  const perGLAS = clamp(P(vals.fitPerGLA ?? f.fitPerGLA));
-  const totalS = clamp(P(vals.fitTot ?? f.fitTot));
-
-  const fitS =
-    modeS === "perNLA"
-      ? perNLAS * nlaS
-      : modeS === "perGLA"
-      ? perGLAS * glaS
-      : totalS;
-
-  const agentFeesS = agentS * rentS * glaS;
-  const denomS = Math.max(1e-9, durationS * glaS);
-
-  return (grossS - fitS - agentFeesS - unforeseenS) / denomS;
-};
-
   /* charts */
   const NER_COLORS = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa"];
   const nerBars = [
@@ -445,17 +317,8 @@ const calcScenarioNER = (vals) => {
   wfData.push({ name: "UC", base: cur, delta: dUC, isTotal: false }); cur += dUC;
   wfData.push({ name: "Final NER", base: 0, delta: cur, isTotal: true });
 
-  const scenarioView = scenarios.map((sc) => {
-  const vals = { ...f, ...sc.overrides };
-  return {
-    id: sc.id,
-    ner: calcScenarioNER(vals),
-  };
-});
-
   /* Export */
   const pageRef = useRef(null);
-  const mainContentRef = useRef(null);
   const resultsContentRef = useRef(null);
   const exportNode = async (node, filename) => {
     if (!node) return;
@@ -522,256 +385,138 @@ const calcScenarioNER = (vals) => {
   };
 
   /* ---------- UI ---------- */
- /* ---------- UI ---------- */
-return (
-  <div style={{ backgroundColor: "#005CA9" }}>
-    <div ref={pageRef} className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md" 
-         style={{ boxShadow: "0 10px 25px rgba(0,0,0,.08)" }}>
+  return (
+    <div style={{ backgroundColor: "#005CA9" }}>
+      <div ref={pageRef} className="p-6 max-w-6xl mx-auto bg-white rounded-xl shadow-md" style={{ boxShadow: "0 10px 25px rgba(0,0,0,.08)" }}>
+        {/* Titel */}
+        <h2 className="text-3xl font-bold mb-2 text-center" style={{ color: "#005CA9" }}>
+          Net Effective Rent (NER) Calculator
+        </h2>
 
-      {/* ===== MAIN CALCULATOR CONTENT (EXPORTED IN FULL PNG) ===== */}
-<div ref={mainContentRef}>
-
-  {/* Titel */}
-  <h2 className="text-3xl font-bold mb-2 text-center" style={{ color: "#005CA9" }}>
-    Net Effective Rent (NER) Calculator
-  </h2>
-
-  {/* Tenant */}
-  <div className="mb-4 flex justify-center">
-    <div className="w-full md:w-1/2">
-      <input 
-        type="text"
-        value={f.tenant}
-        onChange={(e) => S("tenant")(e.target.value)}
-        placeholder="Tenant"
-        className="mt-1 block w-full border rounded-md p-2 text-center"
-      />
-    </div>
-  </div>
-
-  {/* … rest of calculator UI continues here unchanged … */}
-
-</div>
-
-<>
-  {/* ===== SCENARIO COMPARISON TABLE (BELOW CALCULATOR) ===== */}
-  <div className="mt-6 border rounded-lg overflow-hidden">
-    <table className="w-full text-sm border-collapse">
-      <thead>
-        <tr className="bg-gray-100">
-          <th className="border px-3 py-2 text-left"></th>
-          <th className="border px-3 py-2 text-center">Scenario 1</th>
-          <th className="border px-3 py-2 text-center">Scenario 2</th>
-          <th className="border px-3 py-2 text-center">Scenario 3</th>
-          <th className="border px-3 py-2 text-center">Scenario 4</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        <tr>
-          <td className="border px-3 py-2 font-medium">Headline Rent €/sqm</td>
-          <td className="border px-3 py-2 text-right">{F(rent, 2)}</td>
-          {scenarios.map((sc) => (
-            <td key={sc.id} className="border px-3 py-2 text-right">
-              {F(P(resolveScenario(sc, "rent")), 2)}
-            </td>
-          ))}
-        </tr>
-
-        <tr>
-          <td className="border px-3 py-2 font-medium">Lease Term (months)</td>
-          <td className="border px-3 py-2 text-right">{duration}</td>
-          {scenarios.map((sc) => (
-            <td key={sc.id} className="border px-3 py-2 text-right">
-              {P(resolveScenario(sc, "duration"))}
-            </td>
-          ))}
-        </tr>
-
-        <tr>
-          <td className="border px-3 py-2 font-medium">RF-Months</td>
-          <td className="border px-3 py-2 text-right">{rf}</td>
-          {scenarios.map((sc) => (
-            <td key={sc.id} className="border px-3 py-2 text-right">
-              {P(resolveScenario(sc, "rf"))}
-            </td>
-          ))}
-        </tr>
-
-        <tr>
-          <td className="border px-3 py-2 font-medium">Fit-Outs €/sqm (NLA)</td>
-          <td className="border px-3 py-2 text-right">{F(perNLA, 0)}</td>
-          {scenarios.map((sc) => (
-            <td key={sc.id} className="border px-3 py-2 text-right">
-              {F(P(resolveScenario(sc, "fitPerNLA")), 0)}
-            </td>
-          ))}
-        </tr>
-
-        <tr>
-          <td className="border px-3 py-2 font-medium">Agent Fees (months)</td>
-          <td className="border px-3 py-2 text-right">{agent}</td>
-          {scenarios.map((sc) => (
-            <td key={sc.id} className="border px-3 py-2 text-right">
-              {P(resolveScenario(sc, "agent"))}
-            </td>
-          ))}
-        </tr>
-
-        <tr className="bg-blue-50 font-bold">
-          <td className="border px-3 py-2">NER €/sqm</td>
-          <td className="border px-3 py-2 text-right">{F(ner4, 2)}</td>
-          {scenarioView.map((s) => (
-            <td key={s.id} className="border px-3 py-2 text-right">
-              {F(s.ner, 2)}
-            </td>
-          ))}
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-    {/* LEFT: Inputs */}
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <NumericField label="NLA (sqm)" value={f.nla} onChange={S("nla")} />
-        <NumericField label="Add-On (%)" value={f.addon} onChange={S("addon")} />
-        <label className="block">
-          <span className="text-gray-700">GLA (sqm)</span>
-          <input
-            readOnly
-            value={F(gla, 2)}
-            className="mt-1 block w-full border rounded-md p-2 bg-gray-100 text-gray-600"
-          />
-        </label>
-        <NumericField label="Headline Rent €/sqm" value={f.rent} onChange={S("rent")} step={0.5} />
-        <NumericField label="Lease Term (months)" value={f.duration} onChange={S("duration")} format="int" />
-        <NumericField label="Rent-Free (months)" value={f.rf} onChange={S("rf")} />
-      </div>
-
-      {/* Fit-Out block */}
-      <div className="border rounded-md p-3">
-        <div className="flex flex-wrap items-center gap-4 mb-3">
-          <span className="text-gray-700 font-medium">Fit-Out Input:</span>
-          <label className="inline-flex items-center gap-2">
-            <input type="radio" checked={f.fitMode === "perNLA"} onChange={() => S("fitMode")("perNLA")} />
-            <span>€/sqm (NLA)</span>
-          </label>
-          <label className="inline-flex items-center gap-2">
-            <input type="radio" checked={f.fitMode === "perGLA"} onChange={() => S("fitMode")("perGLA")} />
-            <span>€/sqm (GLA)</span>
-          </label>
-          <label className="inline-flex items-center gap-2">
-            <input type="radio" checked={f.fitMode === "total"} onChange={() => S("fitMode")("total")} />
-            <span>Total (€)</span>
-          </label>
+        {/* Tenant */}
+        <div className="mb-4 flex justify-center">
+          <div className="w-full md:w-1/2">
+            <input type="text" value={f.tenant} onChange={(e) => S("tenant")(e.target.value)} placeholder="Tenant" className="mt-1 block w-full border rounded-md p-2 text-center" />
+          </div>
         </div>
-        <div className="space-y-3">
-          <NumericField label="Fit-Out €/sqm (NLA)" value={f.fitPerNLA} onChange={S("fitPerNLA")} readOnly={f.fitMode !== "perNLA"} suffix="€/sqm" />
-          <NumericField label="Fit-Out €/sqm (GLA)" value={f.fitPerGLA} onChange={S("fitPerGLA")} readOnly={f.fitMode !== "perGLA"} suffix="€/sqm" />
-          <NumericField label="Fit-Out Total (€)" value={f.fitTot} onChange={S("fitTot")} readOnly={f.fitMode !== "total"} suffix="€" />
-        </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <NumericField label="Agent Fees (months)" value={f.agent} onChange={S("agent")} />
-        <NumericField label="Unforeseen Costs (lump sum €)" value={f.unforeseen} onChange={S("unforeseen")} suffix="€" />
-      </div>
-    </div>
-
-    {/* RIGHT: Results */}
-    <div className="md:sticky md:top-6 h-fit">
-      <div className="rounded-lg border p-4 space-y-2 bg-white">
-
-        <div ref={resultsContentRef}>
-          {f.tenant.trim() && (
-            <div className="mb-3">
-              <span className="text-xl font-bold">
-                Tenant: <u>{f.tenant.trim()}</u>
-              </span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* LEFT: Inputs */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <NumericField label="NLA (sqm)" value={f.nla} onChange={S("nla")} />
+              <NumericField label="Add-On (%)" value={f.addon} onChange={S("addon")} />
+              <label className="block">
+                <span className="text-gray-700">GLA (sqm)</span>
+                <input readOnly value={F(gla, 2)} className="mt-1 block w-full border rounded-md p-2 bg-gray-100 text-gray-600" />
+              </label>
+              <NumericField label="Headline Rent €/sqm" value={f.rent} onChange={S("rent")} step={0.5} />
+              <NumericField label="Lease Term (months)" value={f.duration} onChange={S("duration")} format="int" />
+              <NumericField label="Rent-Free (months)" value={f.rf} onChange={S("rf")} />
             </div>
-          )}
 
-          <div className="mt-1 rounded-xl ring-2 ring-blue-300 ring-offset-1 bg-blue-50 px-4 py-2 flex items-center justify-between shadow-sm mb-3">
-            <div className="font-bold text-lg">Headline Rent</div>
-            <div className="text-lg font-extrabold tracking-tight text-gray-900">
-              {F(rent, 2)} €/sqm
+            {/* Fit-Out block */}
+            <div className="border rounded-md p-3">
+              <div className="flex flex-wrap items-center gap-4 mb-3">
+                <span className="text-gray-700 font-medium">Fit-Out Input:</span>
+                <label className="inline-flex items-center gap-2"><input type="radio" checked={f.fitMode === "perNLA"} onChange={() => S("fitMode")("perNLA")} /><span>€/sqm (NLA)</span></label>
+                <label className="inline-flex items-center gap-2"><input type="radio" checked={f.fitMode === "perGLA"} onChange={() => S("fitMode")("perGLA")} /><span>€/sqm (GLA)</span></label>
+                <label className="inline-flex items-center gap-2"><input type="radio" checked={f.fitMode === "total"} onChange={() => S("fitMode")("total")} /><span>Total (€)</span></label>
+              </div>
+              <div className="space-y-3">
+                <NumericField label="Fit-Out €/sqm (NLA)" value={f.fitPerNLA} onChange={S("fitPerNLA")} readOnly={f.fitMode !== "perNLA"} suffix="€/sqm" />
+                <NumericField label="Fit-Out €/sqm (GLA)" value={f.fitPerGLA} onChange={S("fitPerGLA")} readOnly={f.fitMode !== "perGLA"} suffix="€/sqm" />
+                <NumericField label="Fit-Out Total (€)" value={f.fitTot} onChange={S("fitTot")} readOnly={f.fitMode !== "total"} suffix="€" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <NumericField label="Agent Fees (months)" value={f.agent} onChange={S("agent")} />
+              <NumericField label="Unforeseen Costs (lump sum €)" value={f.unforeseen} onChange={S("unforeseen")} suffix="€" />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
-            <div>Total Headline Rent</div><div className="text-right"><Money value={totalHeadline} /></div>
-            <div>Total Rent Frees</div><div className="text-right"><Money value={-totalRentFrees} /></div>
-            <div>Total Agent Fees</div><div className="text-right"><Money value={-totalAgentFees} /></div>
-            <div>Unforeseen Costs</div><div className="text-right"><Money value={-totalUnforeseen} /></div>
-          </div>
+          {/* RIGHT: Results */}
+          <div className="md:sticky md:top-6 h-fit">
+            <div className="rounded-lg border p-4 space-y-2 bg-white">
+              {/* Inhalte */}
+              <div ref={resultsContentRef}>
+                {f.tenant.trim() && (
+                  <div className="mb-3">
+                    <span className="text-xl font-bold">Tenant: <u>{f.tenant.trim()}</u></span>
+                  </div>
+                )}
 
-          <p className="text-sm font-semibold text-red-500 mb-1">
-            Total Fit Out Costs: {FCUR(totalFit)}
-          </p>
-
-          <p>1️⃣ NER incl. Rent Frees: <b>{F(ner1, 2)} €/sqm</b><Delta base={rent} val={ner1} /></p>
-          <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 2)} €/sqm</b><Delta base={rent} val={ner2} /></p>
-          <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b><Delta base={rent} val={ner3} /></p>
-
-          {/* Charts */}
-          <div className="mt-2 grid grid-cols-3 gap-6">
-            <div className="h-60 p-2 col-span-1">
-              <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={[{ name: "Fit-Outs", eur: totalFit }]}
-                  margin={{ top: 8, right: 0, bottom: Math.max(0, BASE_B + FIT_EXTRA), left: 0 }}
-                >
-                  <XAxis dataKey="name" tick={false} axisLine={false} tickLine={false} />
-                  <YAxis hide />
-                  <Tooltip formatter={(v) => FCUR0(v)} />
-                  <Bar dataKey="eur" fill="#D9D9D9" barSize={40} isAnimationActive={!isExporting}>
-                    <LabelList content={<VerticalMoneyLabel0 />} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="h-64 p-2 col-span-2">
-              <div className="flex items-center justify-between mb-1">
-                <div className="text-sm font-bold">
-                  {viewMode === "bars" ? "NER vs Headline (€/sqm)" : "Waterfall (€/sqm)"}
+                {/* Headline Rent Banner */}
+                <div className="mt-1 rounded-xl ring-2 ring-blue-300 ring-offset-1 bg-blue-50 px-4 py-2 flex items-center justify-between shadow-sm mb-3">
+                  <div className="font-bold text-lg">Headline Rent</div>
+                  <div className="text-lg font-extrabold tracking-tight text-gray-900">{F(rent, 2)} €/sqm</div>
                 </div>
-                <div className="text-xs">
-                  <label className="mr-2">
-                    <input type="radio" checked={viewMode === "bars"} onChange={() => setViewMode("bars")} /> Bars
-                  </label>
-                  <label>
-                    <input type="radio" checked={viewMode === "waterfall"} onChange={() => setViewMode("waterfall")} /> Waterfall
-                  </label>
+
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
+                  <div>Total Headline Rent</div><div className="text-right"><Money value={totalHeadline} /></div>
+                  <div>Total Rent Frees</div><div className="text-right"><Money value={-totalRentFrees} /></div>
+                  <div>Total Agent Fees</div><div className="text-right"><Money value={-totalAgentFees} /></div>
+                  <div>Unforeseen Costs</div><div className="text-right"><Money value={-totalUnforeseen} /></div>
+                </div>
+
+                <p className="text-sm font-semibold text-red-500 mb-1">Total Fit Out Costs: {FCUR(totalFit)}</p>
+                <p>1️⃣ NER incl. Rent Frees: <b>{F(ner1, 2)} €/sqm</b><Delta base={rent} val={ner1} /></p>
+                <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 2)} €/sqm</b><Delta base={rent} val={ner2} /></p>
+                <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b><Delta base={rent} val={ner3} /></p>
+
+                {/* Charts */}
+                <div className="mt-2 grid grid-cols-3 gap-6">
+                  {/* Fit-Outs */}
+                  <div className="h-60 p-2 col-span-1">
+                    <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={[{ name: "Fit-Outs", eur: totalFit }]} margin={{ top: 8, right: 0, bottom: Math.max(0, BASE_B + FIT_EXTRA), left: 0 }}>
+                        <XAxis dataKey="name" tick={false} axisLine={false} tickLine={false} height={Math.max(0, BASE_H + FIT_EXTRA)} />
+                        <YAxis hide />
+                        <Tooltip formatter={(v) => FCUR0(v)} />
+                        <Bar dataKey="eur" fill="#D9D9D9" barSize={40} isAnimationActive={!isExporting}>
+                          <LabelList content={<VerticalMoneyLabel0 />} />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Bars / Waterfall */}
+                  <div className="h-64 p-2 col-span-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-sm font-bold"><span>{viewMode === "bars" ? "NER vs Headline (€/sqm)" : "Waterfall (€/sqm)"}</span></div>
+                      <div className="text-xs">
+                        <label className="mr-2"><input type="radio" checked={viewMode === "bars"} onChange={() => setViewMode("bars")} /> Bars</label>
+                        <label><input type="radio" checked={viewMode === "waterfall"} onChange={() => setViewMode("waterfall")} /> Waterfall</label>
+                      </div>
+                    </div>
+                    {viewMode === "bars" ? <BarsChart data={nerBars} isExporting={isExporting} /> : <WaterfallChart data={wfData} isExporting={isExporting} />}
+                  </div>
+                </div>
+
+                {/* Final NER Banner */}
+                <div className="mt-4 border-t pt-3">
+                  <div className="mt-3 rounded-2xl ring-2 ring-sky-500 ring-offset-2 bg-sky-50 px-5 py-3 flex items-center justify-between shadow-md">
+                    <div className="text-sky-700 font-extrabold text-base">🏁 Final NER</div>
+                    <div className="text-2xl font-extrabold tracking-tight text-gray-900">{F(ner4, 2)} €/sqm</div>
+                    <div className="ml-4 text-sm"><Delta base={rent} val={ner4} /></div>
+                  </div>
                 </div>
               </div>
 
-              {viewMode === "bars"
-                ? <BarsChart data={nerBars} isExporting={isExporting} />
-                : <WaterfallChart data={wfData} isExporting={isExporting} />
-              }
-            </div>
-          </div>
+              {/* Export buttons */}
+              <div className="flex gap-2 justify-end mt-4">
+                <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Results PNG</button>
+                <button onClick={exportFullPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Full PNG</button>
+                <button onClick={exportProjectHTML} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Project HTML</button>
+              </div>
 
-          <div className="mt-4 border-t pt-3">
-            <div className="mt-3 rounded-2xl ring-2 ring-sky-500 ring-offset-2 bg-sky-50 px-5 py-3 flex items-center justify-between shadow-md">
-              <div className="text-sky-700 font-extrabold text-base">🏁 Final NER</div>
-              <div className="text-2xl font-extrabold tracking-tight text-gray-900">{F(ner4, 2)} €/sqm</div>
-              <div className="ml-4 text-sm"><Delta base={rent} val={ner4} /></div>
             </div>
           </div>
         </div>
-
-        <div className="flex gap-2 justify-end mt-4">
-          <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Results PNG</button>
-          <button onClick={exportFullPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Full PNG</button>
-          <button onClick={exportProjectHTML} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Project HTML</button>
-        </div>
-
       </div>
     </div>
-  </div>
-</>
+  );
+}
+
