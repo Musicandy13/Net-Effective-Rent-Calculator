@@ -65,33 +65,61 @@ function Delta({ base, val }) {
 }
 
 /* ---------- Input-Feld ---------- */
+// === SINGLE CHANGE ONLY ===
+// select full value on focus (like before)
 function NumericField({
-  label, value, onChange, format = "2dec", step = 1, min = 0,
-  readOnly = false, onCommit, suffix,
+  label,
+  value,
+  onChange,
+  format = "2dec",
+  step = 1,
+  min = 0,
+  readOnly = false,
+  onCommit,
+  suffix,
 }) {
   const [focus, setFocus] = useState(false);
+  const inputRef = useRef(null);
+
   const num = P(value);
-  const show = focus ? value : format === "int" ? F(num, 0) : format === "1dec" ? F(num, 1) : F(num, 2);
+  const show = focus
+    ? value
+    : format === "int"
+    ? F(num, 0)
+    : format === "1dec"
+    ? F(num, 1)
+    : F(num, 2);
+
   return (
     <label className="block">
       <span className="text-gray-700">{label}</span>
       <div className="relative">
         <input
-          type={focus ? "number" : "text"}
-          inputMode={focus ? "decimal" : "text"}
+          ref={inputRef}
+          type="text"
+          inputMode="decimal"
           value={show}
           min={min}
           step={step}
-          readOnly={readOnly && !focus}
-          onFocus={() => setFocus(true)}
+          readOnly={readOnly}
+          onFocus={() => {
+            setFocus(true);
+            requestAnimationFrame(() => {
+              inputRef.current?.select();
+            });
+          }}
           onBlur={(e) => {
             setFocus(false);
             const n = clamp(P(e.target.value), min);
             onChange(String(n));
             onCommit?.(n);
           }}
-          onChange={(e) => onChange(e.target.value.replace(/[^\d.,-]/g, ""))}
-          className={`mt-1 block w-full border rounded-md p-2 pr-16 ${readOnly ? "bg-gray-100 text-gray-600" : ""}`}
+          onChange={(e) =>
+            onChange(e.target.value.replace(/[^\d.,-]/g, ""))
+          }
+          className={`mt-1 block w-full border rounded-md p-2 pr-16 ${
+            readOnly ? "bg-gray-100 text-gray-600" : ""
+          }`}
         />
         {suffix && (
           <span className="absolute inset-y-0 right-3 top-1/2 -translate-y-1/2 text-gray-500">
@@ -102,6 +130,7 @@ function NumericField({
     </label>
   );
 }
+
 
 /* ---------- Chart Labels ---------- */
 const PercentLabel = ({ x, y, width, value }) => {
