@@ -591,8 +591,11 @@ export default function App() {
     ["Fit-Outs (€/sqm)", "fitPerNLA"],
     ["Agent Fees (months)", "agent"],
   ].map(([label, key]) => (
-    <div key={key} className="grid grid-cols-5 border-t text-sm">
-
+    <div
+  key={key}
+  data-row
+  className="grid grid-cols-5 border-t text-sm"
+>
       {/* Row label */}
       <div className="p-2 font-semibold bg-gray-50">
         {label}
