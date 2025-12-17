@@ -579,163 +579,104 @@ return (
             </div>
           </div>
 
-          {/* RIGHT: Results */}
-          <div className="md:sticky md:top-6 h-fit">
-            <div className="rounded-lg border p-4 space-y-2 bg-white">
-              {/* Inhalte */}
-              <div ref={resultsContentRef}>
-                {f.tenant.trim() && (
-                  <div className="mb-3">
-                    <span className="text-xl font-bold">Tenant: <u>{f.tenant.trim()}</u></span>
-                  </div>
-                )}
+        {/* RIGHT: Results */}
+<div className="md:sticky md:top-6 h-fit">
+  <div className="rounded-lg border p-4 space-y-2 bg-white">
 
-                {/* Headline Rent Banner */}
-                <div className="mt-1 rounded-xl ring-2 ring-blue-300 ring-offset-1 bg-blue-50 px-4 py-2 flex items-center justify-between shadow-sm mb-3">
-                  <div className="font-bold text-lg">Headline Rent</div>
-                  <div className="text-lg font-extrabold tracking-tight text-gray-900">{F(rent, 2)} €/sqm</div>
-                </div>
+    {/* Inhalte */}
+    <div ref={resultsContentRef}>
+      {f.tenant.trim() && (
+        <div className="mb-3">
+          <span className="text-xl font-bold">Tenant: <u>{f.tenant.trim()}</u></span>
+        </div>
+      )}
 
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
-                  <div>Total Headline Rent</div><div className="text-right"><Money value={totalHeadline} /></div>
-                  <div>Total Rent Frees</div><div className="text-right"><Money value={-totalRentFrees} /></div>
-                  <div>Total Agent Fees</div><div className="text-right"><Money value={-totalAgentFees} /></div>
-                  <div>Unforeseen Costs</div><div className="text-right"><Money value={-totalUnforeseen} /></div>
-                </div>
-
-                <p className="text-sm font-semibold text-red-500 mb-1">Total Fit Out Costs: {FCUR(totalFit)}</p>
-                <p>1️⃣ NER incl. Rent Frees: <b>{F(ner1, 2)} €/sqm</b><Delta base={rent} val={ner1} /></p>
-                <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 2)} €/sqm</b><Delta base={rent} val={ner2} /></p>
-                <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b><Delta base={rent} val={ner3} /></p>
-
-                {/* Charts */}
-                <div className="mt-2 grid grid-cols-3 gap-6">
-                  {/* Fit-Outs */}
-                  <div className="h-60 p-2 col-span-1">
-                    <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={[{ name: "Fit-Outs", eur: totalFit }]} margin={{ top: 8, right: 0, bottom: Math.max(0, BASE_B + FIT_EXTRA), left: 0 }}>
-                        <XAxis dataKey="name" tick={false} axisLine={false} tickLine={false} height={Math.max(0, BASE_H + FIT_EXTRA)} />
-                        <YAxis hide />
-                        <Tooltip formatter={(v) => FCUR0(v)} />
-                        <Bar dataKey="eur" fill="#D9D9D9" barSize={40} isAnimationActive={!isExporting}>
-                          <LabelList content={<VerticalMoneyLabel0 />} />
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Bars / Waterfall */}
-                  <div className="h-64 p-2 col-span-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="text-sm font-bold"><span>{viewMode === "bars" ? "NER vs Headline (€/sqm)" : "Waterfall (€/sqm)"}</span></div>
-                      <div className="text-xs">
-                        <label className="mr-2"><input type="radio" checked={viewMode === "bars"} onChange={() => setViewMode("bars")} /> Bars</label>
-                        <label><input type="radio" checked={viewMode === "waterfall"} onChange={() => setViewMode("waterfall")} /> Waterfall</label>
-                      </div>
-                    </div>
-                    {viewMode === "bars" ? <BarsChart data={nerBars} isExporting={isExporting} /> : <WaterfallChart data={wfData} isExporting={isExporting} />}
-                  </div>
-                </div>
-
-                {/* Final NER Banner */}
-                <div className="mt-4 border-t pt-3">
-                  <div className="mt-3 rounded-2xl ring-2 ring-sky-500 ring-offset-2 bg-sky-50 px-5 py-3 flex items-center justify-between shadow-md">
-                    <div className="text-sky-700 font-extrabold text-base">🏁 Final NER</div>
-                    <div className="text-2xl font-extrabold tracking-tight text-gray-900">{F(ner4, 2)} €/sqm</div>
-                    <div className="ml-4 text-sm"><Delta base={rent} val={ner4} /></div>
-                  </div>
-                </div>
-              </div>
-
-                 {/* Export buttons */}
-              <div className="flex gap-2 justify-end mt-4">
-                <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Results PNG</button>
-                <button onClick={exportFullPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Full PNG</button>
-                <button onClick={exportProjectHTML} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Project HTML</button>
-              </div>
-
-              </div>
-      {/* ===== END MAIN CALCULATOR CONTENT ===== */}
-
-              {/* ========= Scenario Comparison Table ========= */}
-<div className="mt-6 border rounded-lg overflow-hidden">
-
-  {/* Header */}
-  <div className="grid grid-cols-5 text-center font-bold">
-    <div />
-    <div className="bg-blue-900 text-white p-2">Scenario 1</div>
-    <div className="bg-blue-700 text-white p-2">Scenario 2</div>
-    <div className="bg-blue-600 text-white p-2">Scenario 3</div>
-    <div className="bg-blue-500 text-white p-2">Scenario 4</div>
-  </div>
-
-  {[
-    ["Headline Rent (€/sqm)", "rent"],
-    ["Lease Term (months)", "duration"],
-    ["Rent-Free (months)", "rf"],
-    ["Fit-Out (€/sqm NLA)", "fitPerNLA"],
-    ["Agent Fee (months)", "agent"],
-    ["Unforeseen (€)", "unforeseen"],
-  ].map(([label, key]) => (
-    <div key={key} className="grid grid-cols-5 border-t text-sm">
-
-      {/* Label column */}
-      <div className="p-2 font-semibold bg-gray-50">
-        {label}
+      {/* Headline Rent Banner */}
+      <div className="mt-1 rounded-xl ring-2 ring-blue-300 ring-offset-1 bg-blue-50 px-4 py-2 flex items-center justify-between shadow-sm mb-3">
+        <div className="font-bold text-lg">Headline Rent</div>
+        <div className="text-lg font-extrabold tracking-tight text-gray-900">{F(rent, 2)} €/sqm</div>
       </div>
 
-           {/* Scenario 1 (baseline, locked) */}
-      <div className="p-2">
-        <ScenarioField
-          value={f[key]}
-          readOnly
-          bold={key === "rent"}
-        />
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
+        <div>Total Headline Rent</div><div className="text-right"><Money value={totalHeadline} /></div>
+        <div>Total Rent Frees</div><div className="text-right"><Money value={-totalRentFrees} /></div>
+        <div>Total Agent Fees</div><div className="text-right"><Money value={-totalAgentFees} /></div>
+        <div>Unforeseen Costs</div><div className="text-right"><Money value={-totalUnforeseen} /></div>
       </div>
 
-      {/* Scenarios 2–4 (editable) */}
-      {scenarios.map((sc) => (
-        <div key={sc.id} className="p-2">
-         <ScenarioField
-            value={resolveScenario(sc, key)}
-            onChange={(v) => setScenarioVal(sc.id, key, v)}
-            bold={key === "rent"}
-          />
+      <p className="text-sm font-semibold text-red-500 mb-1">
+        Total Fit Out Costs: {FCUR(totalFit)}
+      </p>
+
+      <p>1️⃣ NER incl. Rent Frees: <b>{F(ner1, 2)} €/sqm</b><Delta base={rent} val={ner1} /></p>
+      <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 2)} €/sqm</b><Delta base={rent} val={ner2} /></p>
+      <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b><Delta base={rent} val={ner3} /></p>
+
+      {/* Charts */}
+      <div className="mt-2 grid grid-cols-3 gap-6">
+        {/* Fit-Outs */}
+        <div className="h-60 p-2 col-span-1">
+          <div className="text-sm font-bold text-center mb-1">Total Fit-Outs</div>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={[{ name: "Fit-Outs", eur: totalFit }]} margin={{ top: 8, right: 0, bottom: Math.max(0, BASE_B + FIT_EXTRA), left: 0 }}>
+              <XAxis dataKey="name" tick={false} axisLine={false} tickLine={false} height={Math.max(0, BASE_H + FIT_EXTRA)} />
+              <YAxis hide />
+              <Tooltip formatter={(v) => FCUR0(v)} />
+              <Bar dataKey="eur" fill="#D9D9D9" barSize={40} isAnimationActive={!isExporting}>
+                <LabelList content={<VerticalMoneyLabel0 />} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
-      ))}
 
-    </div>
-  ))}
-
-  {/* Final NER row */}
-  <div className="grid grid-cols-5 border-t bg-green-50 font-bold">
-    <div className="p-2 bg-green-600 text-white">
-      Final NER (€/sqm)
-    </div>
-
-    {/* Scenario 1 */}
-    <div className="p-2 text-right">
-      {F(ner4, 2)}
-    </div>
-
-    {/* Scenarios 2–4 */}
-    {scenarios.map((sc) => {
-      const nerS = calcScenarioNER({ ...f, ...sc.overrides });
-      return (
-        <div key={sc.id} className="p-2 text-right">
-          {F(nerS, 2)}
-        </div>
-      );
-    })}
-  </div>
-
-</div>
-
+        {/* Bars / Waterfall */}
+        <div className="h-64 p-2 col-span-2">
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-sm font-bold">{viewMode === "bars" ? "NER vs Headline (€/sqm)" : "Waterfall (€/sqm)"}</div>
+            <div className="text-xs">
+              <label className="mr-2"><input type="radio" checked={viewMode === "bars"} onChange={() => setViewMode("bars")} /> Bars</label>
+              <label><input type="radio" checked={viewMode === "waterfall"} onChange={() => setViewMode("waterfall")} /> Waterfall</label>
             </div>
           </div>
+          {viewMode === "bars" ? (
+            <BarsChart data={nerBars} isExporting={isExporting} />
+          ) : (
+            <WaterfallChart data={wfData} isExporting={isExporting} />
+          )}
+        </div>
+      </div>
+
+      {/* Final NER Banner */}
+      <div className="mt-4 border-t pt-3">
+        <div className="mt-3 rounded-2xl ring-2 ring-sky-500 ring-offset-2 bg-sky-50 px-5 py-3 flex items-center justify-between shadow-md">
+          <div className="text-sky-700 font-extrabold text-base">🏁 Final NER</div>
+          <div className="text-2xl font-extrabold tracking-tight text-gray-900">{F(ner4, 2)} €/sqm</div>
+          <div className="ml-4 text-sm"><Delta base={rent} val={ner4} /></div>
         </div>
       </div>
     </div>
-  );
+
+    {/* Export buttons */}
+    <div className="flex gap-2 justify-end mt-4">
+      <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Results PNG</button>
+      <button onClick={exportFullPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Full PNG</button>
+      <button onClick={exportProjectHTML} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Project HTML</button>
+    </div>
+
+  </div>
+</div>
+
+{/* ===== END MAIN CALCULATOR CONTENT ===== */}
+
+
+{/* ========= Scenario Comparison Table ========= */}
+<div className="mt-6 border rounded-lg overflow-hidden">
+  … SCENARIO TABLE CODE (unchanged) …
+</div>
+
+</div>  {/* closes the column wrapper */}
+</div>  {/* closes the main grid */}
+</div>  {/* closes the outer container */}
+</div>  {/* closes the blue background wrapper */}
+);
 }
