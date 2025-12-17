@@ -573,11 +573,11 @@ export default function App() {
   </div>
 
   {[
-    ["Headline Rent", "rent", "€/sqm"],
-    ["Lease Term", "duration", "months"],
-    ["RF-Months", "rf", "months"],
-    ["Fit-Outs / sqm", "fitPerNLA", "€/sqm"],
-    ["Agent Fees", "agent", "months"],
+    ["Headline Rent (€/sqm)", "rent"],
+["Lease Term (months)", "duration"],
+["RF-Months (months)", "rf"],
+["Fit-Outs (€/sqm)", "fitPerNLA"],
+["Agent Fees (months)", "agent"],
   ].map(([label, key, suffix]) => (
     <div key={key} className="grid grid-cols-5 border-t text-sm">
       {/* Row label */}
