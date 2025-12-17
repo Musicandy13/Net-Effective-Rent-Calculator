@@ -666,10 +666,12 @@ return (
 
 {/* ===== END MAIN CALCULATOR CONTENT ===== */}
 
+{/* !!! DAS FEHLENDE DIV !!! */}
+</div> {/* closes RIGHT column */}
 
 {/* ========= Scenario Comparison Table ========= */}
 <div className="mt-6 border rounded-lg overflow-hidden">
-  {/* Scenario table code will be inserted here */}
+  {/* scenario table code will be inserted here */}
 </div>
 
 
