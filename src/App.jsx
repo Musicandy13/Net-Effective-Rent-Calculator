@@ -598,6 +598,80 @@ const calcScenarioNER = (vals) => {
                 </div>
               </div>
 
+              {/* ========= Scenario Comparison Table ========= */}
+<div className="mt-6 border rounded-lg overflow-hidden">
+
+  {/* Header */}
+  <div className="grid grid-cols-5 text-center font-bold">
+    <div />
+    <div className="bg-blue-900 text-white p-2">Scenario 1</div>
+    <div className="bg-blue-700 text-white p-2">Scenario 2</div>
+    <div className="bg-blue-600 text-white p-2">Scenario 3</div>
+    <div className="bg-blue-500 text-white p-2">Scenario 4</div>
+  </div>
+
+  {[
+    ["Headline Rent (€/sqm)", "rent"],
+    ["Lease Term (months)", "duration"],
+    ["Rent-Free (months)", "rf"],
+    ["Fit-Out (€/sqm NLA)", "fitPerNLA"],
+    ["Agent Fee (months)", "agent"],
+    ["Unforeseen (€)", "unforeseen"],
+  ].map(([label, key]) => (
+    <div key={key} className="grid grid-cols-5 border-t text-sm">
+
+      {/* Label column */}
+      <div className="p-2 font-semibold bg-gray-50">
+        {label}
+      </div>
+
+      {/* Scenario 1 (baseline, locked) */}
+      <div className="p-2">
+        <ScenarioCell
+          value={f[key]}
+          readOnly
+          bold={key === "rent"}
+        />
+      </div>
+
+      {/* Scenarios 2–4 (editable) */}
+      {scenarios.map((sc) => (
+        <div key={sc.id} className="p-2">
+          <ScenarioCell
+            value={resolveScenario(sc, key)}
+            onChange={(v) => setScenarioVal(sc.id, key, v)}
+            bold={key === "rent"}
+          />
+        </div>
+      ))}
+
+    </div>
+  ))}
+
+  {/* Final NER row */}
+  <div className="grid grid-cols-5 border-t bg-green-50 font-bold">
+    <div className="p-2 bg-green-600 text-white">
+      Final NER (€/sqm)
+    </div>
+
+    {/* Scenario 1 */}
+    <div className="p-2 text-right">
+      {F(ner4, 2)}
+    </div>
+
+    {/* Scenarios 2–4 */}
+    {scenarios.map((sc) => {
+      const nerS = calcScenarioNER({ ...f, ...sc.overrides });
+      return (
+        <div key={sc.id} className="p-2 text-right">
+          {F(nerS, 2)}
+        </div>
+      );
+    })}
+  </div>
+
+</div>
+
               {/* Export buttons */}
               <div className="flex gap-2 justify-end mt-4">
                 <button onClick={exportResultsPNG} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Results PNG</button>
