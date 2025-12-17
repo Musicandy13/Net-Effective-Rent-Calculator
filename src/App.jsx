@@ -614,7 +614,7 @@ export default function App() {
     <div className="p-2 bg-green-600 text-white">NER</div>
 
     {/* Scenario 1 */}
-    <div className="p-2 text-center">
+    <div className="p-2 text-right tabular-nums">
       {F(ner4, 2)} €/sqm
     </div>
 
