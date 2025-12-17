@@ -137,19 +137,29 @@ function NumericField({
   );
 }
 
-/* ========= ScenarioCell ========= */
-function ScenarioCell({ value, onChange, bold = false, readOnly = false }) {
-  const ref = useRef(null);
+/* ========= ScenarioField (identical behavior to NumericField but without label) ========= */
+function ScenarioField({ value, onChange, readOnly = false, bold = false }) {
+  const [focus, setFocus] = useState(false);
+  const inputRef = useRef(null);
+
+  const num = P(value);
+  const show = focus ? value : F(num, 2);
 
   return (
     <input
-      ref={ref}
+      ref={inputRef}
       type="text"
       inputMode="decimal"
-      value={F(P(value), 2)}
+      value={show}
       readOnly={readOnly}
       onFocus={() => {
-        requestAnimationFrame(() => ref.current?.select());
+        setFocus(true);
+        requestAnimationFrame(() => inputRef.current?.select());
+      }}
+      onBlur={(e) => {
+        setFocus(false);
+        const n = clamp(P(e.target.value));
+        onChange?.(String(n));
       }}
       onChange={(e) =>
         onChange?.(e.target.value.replace(/[^\d.,-]/g, ""))
@@ -162,7 +172,6 @@ function ScenarioCell({ value, onChange, bold = false, readOnly = false }) {
     />
   );
 }
-
 
 /* ---------- Chart Labels ---------- */
 const PercentLabel = ({ x, y, width, value }) => {
