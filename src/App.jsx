@@ -258,13 +258,14 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [viewMode, setViewMode] = useState("bars");
 
-  /* ========= Scenario System ========= */
+/* ========= Scenario System ========= */
 const [scenarios, setScenarios] = useState([
   { id: 2, overrides: {} },
   { id: 3, overrides: {} },
   { id: 4, overrides: {} },
 ]);
 
+// Update one specific scenario field
 const setScenarioVal = (id, key, value) => {
   setScenarios((arr) =>
     arr.map((sc) =>
@@ -275,11 +276,11 @@ const setScenarioVal = (id, key, value) => {
   );
 };
 
+// Return overridden value OR fallback to baseline
 const resolveScenario = (sc, key) => {
   const v = sc.overrides[key];
   return v !== undefined ? v : f[key];
 };
-
 
   /* ✅ Fix: Inputdaten beim Laden aus ?data=... übernehmen */
   useEffect(() => {
