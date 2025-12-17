@@ -1,7 +1,3 @@
-// ============================
-// App.jsx — BASELINE (Teil A)
-// ============================
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ResponsiveContainer,
@@ -30,8 +26,7 @@ const clamp = (n, min = 0) => (Number.isFinite(n) ? Math.max(min, n) : 0);
 const safe = (n) => (Number.isFinite(n) ? n : 0);
 const P = (v) => {
   let s = String(v ?? "").trim().replace(/\s/g, "");
-  const hasDot = s.includes(".");
-  const c = (s.match(/,/g) || []).length;
+  const hasDot = s.includes("."), c = (s.match(/,/g) || []).length;
   s = !hasDot && c === 1 ? s.replace(",", ".") : s.replace(/,/g, "");
   const n = parseFloat(s);
   return Number.isFinite(n) ? n : 0;
@@ -61,51 +56,33 @@ function Money({ value }) {
 }
 function Delta({ base, val }) {
   const pct = base > 0 ? ((val - base) / base) * 100 : 0;
-  const sign = pct > 0 ? "+" : "";
-  const cls =
-    pct < 0 ? "text-red-600" :
-    pct > 0 ? "text-green-600" :
-    "text-gray-500";
-
+  const up = pct > 0, down = pct < 0, sign = pct > 0 ? "+" : "";
   return (
-    <span className={`${cls} font-medium ml-2`}>
-      {sign}{F(pct, 2)}%
+    <span className={`${down ? "text-red-600" : up ? "text-green-600" : "text-gray-500"} font-medium ml-2`}>
+      {down ? "▼" : up ? "▲" : "■"} {sign}{F(pct, 2)}%
     </span>
   );
 }
 
-/* ---------- NumericField (ORIGINAL, UNVERÄNDERT) ---------- */
+/* ---------- Input-Feld ---------- */
 function NumericField({
-  label,
-  value,
-  onChange,
-  format = "2dec",
-  step = 1,
-  min = 0,
-  readOnly = false,
-  onCommit,
-  suffix,
+  label, value, onChange, format = "2dec", step = 1, min = 0,
+  readOnly = false, onCommit, suffix,
 }) {
   const [focus, setFocus] = useState(false);
   const num = P(value);
-
-  const show = focus
-    ? value
-    : format === "int"
-    ? F(num, 0)
-    : format === "1dec"
-    ? F(num, 1)
-    : F(num, 2);
-
+  const show = focus ? value : format === "int" ? F(num, 0) : format === "1dec" ? F(num, 1) : F(num, 2);
   return (
     <label className="block">
       <span className="text-gray-700">{label}</span>
       <div className="relative">
         <input
-          type="text"
-          inputMode="decimal"
+          type={focus ? "number" : "text"}
+          inputMode={focus ? "decimal" : "text"}
           value={show}
-          readOnly={readOnly}
+          min={min}
+          step={step}
+          readOnly={readOnly && !focus}
           onFocus={() => setFocus(true)}
           onBlur={(e) => {
             setFocus(false);
@@ -113,12 +90,8 @@ function NumericField({
             onChange(String(n));
             onCommit?.(n);
           }}
-          onChange={(e) =>
-            onChange(e.target.value.replace(/[^\d.,-]/g, ""))
-          }
-          className={`mt-1 block w-full border rounded-md p-2 pr-16 ${
-            readOnly ? "bg-gray-100 text-gray-600" : ""
-          }`}
+          onChange={(e) => onChange(e.target.value.replace(/[^\d.,-]/g, ""))}
+          className={`mt-1 block w-full border rounded-md p-2 pr-16 ${readOnly ? "bg-gray-100 text-gray-600" : ""}`}
         />
         {suffix && (
           <span className="absolute inset-y-0 right-3 top-1/2 -translate-y-1/2 text-gray-500">
@@ -129,40 +102,6 @@ function NumericField({
     </label>
   );
 }
-
-function ScenarioCell({
-  value,
-  onChange,
-  bold = false,
-  readOnly = false,
-  dataCol,
-}) {
-  const ref = useRef(null);
-
-  return (
-    <input
-      ref={ref}
-      type="text"
-      inputMode="decimal"
-      value={F(P(value), 2)}
-      readOnly={readOnly}
-      data-col={dataCol}
-      onFocus={() => {
-        requestAnimationFrame(() => ref.current?.select());
-      }}
-      onChange={(e) =>
-        onChange(e.target.value.replace(/[^\d.,-]/g, ""))
-      }
-      className={`
-        w-full border rounded-md p-2
-        text-right tabular-nums
-        ${readOnly ? "bg-gray-100 text-gray-800" : ""}
-        ${bold ? "font-bold" : ""}
-      `}
-    />
-  );
-}
-
 
 /* ---------- Chart Labels ---------- */
 const PercentLabel = ({ x, y, width, value }) => {
@@ -284,28 +223,6 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [viewMode, setViewMode] = useState("bars");
 
-
-  /* ================= Scenario Overrides (2–4) ================= */
-  const [scenarios, setScenarios] = useState([
-    { id: 2, overrides: {} },
-    { id: 3, overrides: {} },
-    { id: 4, overrides: {} },
-  ]);
-
-  const setScenarioVal = (id, key, value) => {
-    setScenarios(s =>
-      s.map(sc =>
-        sc.id === id
-          ? { ...sc, overrides: { ...sc.overrides, [key]: value } }
-          : sc
-      )
-    );
-  };
-
-  const resolveScenario = (sc, key) =>
-    sc?.overrides?.[key] ?? f[key];
-
-
   /* ✅ Fix: Inputdaten beim Laden aus ?data=... übernehmen */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -369,33 +286,6 @@ export default function App() {
   const ner2 = (gross - totalFit) / denom;
   const ner3 = (gross - totalFit - agentFees) / denom;
   const ner4 = (gross - totalFit - agentFees - unforeseen) / denom;
-
-    /* ================= Scenario Final NER ================= */
-
-  const calcScenarioFinalNER = (vals) => {
-  const rents = clamp(P(vals.rent));
-  const durations = Math.max(0, Math.floor(P(vals.duration)));
-  const rfs = clamp(P(vals.rf));
-  const agents = clamp(P(vals.agent));
-  const unforeseens = clamp(P(vals.unforeseen));
-
-  const monthss = Math.max(0, durations - rfs);
-  const grossS = rents * gla * monthss;
-
-  const fits =
-    f.fitMode === "perNLA"
-      ? clamp(P(vals.fitPerNLA)) * nla
-      : f.fitMode === "perGLA"
-      ? clamp(P(vals.fitPerGLA)) * gla
-      : clamp(P(vals.fitTot));
-
-  const agentFeesS = agents * rents * gla;
-  const denomS = Math.max(1e-9, durations * gla);
-
-  return (grossS - fits - agentFeesS - unforeseens) / denomS;
-};
-
-
 
   const totalHeadline = rent * gla * duration;
   const totalRentFrees = rent * gla * rf;
@@ -534,9 +424,9 @@ export default function App() {
                 <label className="inline-flex items-center gap-2"><input type="radio" checked={f.fitMode === "total"} onChange={() => S("fitMode")("total")} /><span>Total (€)</span></label>
               </div>
               <div className="space-y-3">
-                <NumericField label="Fit-Out €/sqm (NLA)" value={f.fitPerNLA} onChange={S("fitPerNLA")} readOnly={f.fitMode !== "perNLA"} />
-                <NumericField label="Fit-Out €/sqm (GLA)" value={f.fitPerGLA} onChange={S("fitPerGLA")} readOnly={f.fitMode !== "perGLA"}  />
-                <NumericField label="Fit-Out Total (€)" value={f.fitTot} onChange={S("fitTot")} readOnly={f.fitMode !== "total"}  />
+                <NumericField label="Fit-Out €/sqm (NLA)" value={f.fitPerNLA} onChange={S("fitPerNLA")} readOnly={f.fitMode !== "perNLA"} suffix="€/sqm" />
+                <NumericField label="Fit-Out €/sqm (GLA)" value={f.fitPerGLA} onChange={S("fitPerGLA")} readOnly={f.fitMode !== "perGLA"} suffix="€/sqm" />
+                <NumericField label="Fit-Out Total (€)" value={f.fitTot} onChange={S("fitTot")} readOnly={f.fitMode !== "total"} suffix="€" />
               </div>
             </div>
 
@@ -614,81 +504,6 @@ export default function App() {
                   </div>
                 </div>
               </div>
-
-              {/* ================= Scenario Comparison ================= */}
-<div className="mt-6 border rounded-lg overflow-hidden">
-
-  {/* Header */}
-  <div className="grid grid-cols-5 text-center font-bold">
-    <div />
-    <div className="bg-blue-900 text-white p-2">Scenario 1</div>
-    <div className="bg-blue-700 text-white p-2">Scenario 2</div>
-    <div className="bg-blue-600 text-white p-2">Scenario 3</div>
-    <div className="bg-blue-500 text-white p-2">Scenario 4</div>
-  </div>
-
-  {[
-    ["Headline Rent (€/sqm)", "rent"],
-    ["Lease Term (months)", "duration"],
-    ["RF-Months (months)", "rf"],
-    ["Fit-Outs (€/sqm)", "fitPerNLA"],
-    ["Agent Fees (months)", "agent"],
-  ].map(([label, key]) => (
-    <div
-  key={key}
-  data-row
-  className="grid grid-cols-5 border-t text-sm"
->
-      {/* Row label */}
-      <div className="p-2 font-semibold bg-gray-50">
-        {label}
-      </div>
-
-      {/* Scenario 1 (locked) */}
-<div className="p-1">
-  <ScenarioCell
-    value={f[key]}
-    readOnly
-    bold={key === "rent"}
-  />
-</div>
-
-      {/* Scenarios 2–4 */}
-      {scenarios.map((sc, idx) => (
-        <div className={key === "rent" ? "font-bold" : ""}>
-  <ScenarioCell
-  value={resolveScenario(sc, key)}
-  onChange={(v) => setScenarioVal(sc.id, key, v)}
-  dataCol={idx + 2}
-  bold={key === "rent"}
-/>
-</div>
-      ))}
-
-    </div>
-  ))}
-
-  {/* Final NER row */}
-  <div className="grid grid-cols-5 border-t bg-green-50 font-bold">
-    <div className="p-2 bg-green-600 text-white">NER</div>
-
-    {/* Scenario 1 */}
-    <div className="p-2 text-right tabular-nums">
-      {F(ner4, 2)} €/sqm
-    </div>
-
-    {/* Scenarios 2–4 */}
-    {scenarios.map(sc => {
-      const nerS = calcScenarioFinalNER({ ...f, ...sc.overrides });
-      return (
-        <div key={sc.id} className="p-2 text-center">
-          {F(nerS, 2)} €/sqm
-        </div>
-      );
-    })}
-  </div>
-</div>
-
 
               {/* Export buttons */}
               <div className="flex gap-2 justify-end mt-4">
