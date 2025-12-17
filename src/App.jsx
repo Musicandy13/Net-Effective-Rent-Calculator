@@ -77,7 +77,8 @@ function NumericField({
       <span className="text-gray-700">{label}</span>
       <div className="relative">
         <input
-          type={focus ? "number" : "text"}
+          type="text"
+          inputMode="decimal"
           inputMode={focus ? "decimal" : "text"}
           value={show}
           min={min}
