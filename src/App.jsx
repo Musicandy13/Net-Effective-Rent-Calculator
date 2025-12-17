@@ -607,6 +607,7 @@ return (
   </table>
 </div>
 
+        
         {/* Titel */}
         <h2 className="text-3xl font-bold mb-2 text-center" style={{ color: "#005CA9" }}>
           Net Effective Rent (NER) Calculator
