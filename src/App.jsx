@@ -66,41 +66,47 @@ function Delta({ base, val }) {
 
 /* ---------- Input-Feld ---------- */
 function NumericField({
-  label, value, onChange, format = "2dec", step = 1, min = 0,
-  readOnly = false, onCommit, suffix,
+  value,
+  onChange,
+  format = "2dec",
+  min = 0,
+  readOnly = false,
 }) {
-  const [focus, setFocus] = useState(false);
+  const inputRef = useRef(null);
+  const [editing, setEditing] = useState(false);
+
   const num = P(value);
-  const show = focus ? value : format === "int" ? F(num, 0) : format === "1dec" ? F(num, 1) : F(num, 2);
+  const display = editing
+    ? value
+    : format === "int"
+    ? F(num, 0)
+    : F(num, 2);
+
   return (
-    <label className="block">
-      <span className="text-gray-700">{label}</span>
-      <div className="relative">
-        <input
-          type="text"
-          inputMode="decimal"
-          inputMode={focus ? "decimal" : "text"}
-          value={show}
-          min={min}
-          step={step}
-          readOnly={readOnly && !focus}
-          onFocus={() => setFocus(true)}
-          onBlur={(e) => {
-            setFocus(false);
-            const n = clamp(P(e.target.value), min);
-            onChange(String(n));
-            onCommit?.(n);
-          }}
-          onChange={(e) => onChange(e.target.value.replace(/[^\d.,-]/g, ""))}
-          className={`mt-1 block w-full border rounded-md p-2 pr-16 ${readOnly ? "bg-gray-100 text-gray-600" : ""}`}
-        />
-        {suffix && (
-          <span className="absolute inset-y-0 right-3 top-1/2 -translate-y-1/2 text-gray-500">
-            {suffix}
-          </span>
-        )}
-      </div>
-    </label>
+    <input
+      ref={inputRef}
+      type="text"
+      inputMode="decimal"
+      value={display}
+      readOnly={readOnly}
+      onFocus={() => {
+        setEditing(true);
+        requestAnimationFrame(() => {
+          inputRef.current?.select(); // ✅ SELECT ALL
+        });
+      }}
+      onBlur={(e) => {
+        setEditing(false);
+        const n = clamp(P(e.target.value), min);
+        onChange(String(n));
+      }}
+      onChange={(e) => {
+        onChange(e.target.value.replace(/[^\d.,-]/g, ""));
+      }}
+      className={`block w-full border rounded-md p-2 text-right ${
+        readOnly ? "bg-gray-100 text-gray-600" : ""
+      }`}
+    />
   );
 }
 
