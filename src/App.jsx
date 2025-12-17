@@ -602,7 +602,7 @@ export default function App() {
       </div>
 
       {/* Scenario 1 (locked) */}
-      <div className="p-2 text-right font-bold tabular-nums bg-gray-100">
+<div className="p-2 text-right tabular-nums bg-gray-100 flex items-center justify-end">
         {F(P(f[key]), 2)}
       </div>
 
