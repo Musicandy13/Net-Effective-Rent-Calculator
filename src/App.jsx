@@ -616,29 +616,6 @@ export default function App() {
   ))}
 
   {/* Final NER row */}
-  <div className="grid grid-cols-5 border-t font-bold bg-green-50">
-
-    <div className="p-2 bg-green-600 text-white">
-      NER
-    </div>
-
-    <div className="p-2 text-right tabular-nums">
-      {F(ner4, 2)} €/sqm
-    </div>
-
-    {scenarios.map(sc => {
-      const nerS = calcScenarioFinalNER({ ...f, ...sc.overrides });
-      return (
-        <div key={sc.id} className="p-2 text-right tabular-nums">
-          {F(nerS, 2)} €/sqm
-        </div>
-      );
-    })}
-
-  </div>
-</div>
-
-  {/* Final NER row */}
   <div className="grid grid-cols-5 border-t bg-green-50 font-bold">
     <div className="p-2 bg-green-600 text-white">NER</div>
 
