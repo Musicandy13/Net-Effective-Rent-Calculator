@@ -1,3 +1,7 @@
+// ============================
+// App.jsx — BASELINE (Teil A)
+// ============================
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ResponsiveContainer,
@@ -26,7 +30,8 @@ const clamp = (n, min = 0) => (Number.isFinite(n) ? Math.max(min, n) : 0);
 const safe = (n) => (Number.isFinite(n) ? n : 0);
 const P = (v) => {
   let s = String(v ?? "").trim().replace(/\s/g, "");
-  const hasDot = s.includes("."), c = (s.match(/,/g) || []).length;
+  const hasDot = s.includes(".");
+  const c = (s.match(/,/g) || []).length;
   s = !hasDot && c === 1 ? s.replace(",", ".") : s.replace(/,/g, "");
   const n = parseFloat(s);
   return Number.isFinite(n) ? n : 0;
@@ -56,69 +61,88 @@ function Money({ value }) {
 }
 function Delta({ base, val }) {
   const pct = base > 0 ? ((val - base) / base) * 100 : 0;
-  const up = pct > 0, down = pct < 0, sign = pct > 0 ? "+" : "";
+  const up = pct > 0,
+    down = pct < 0,
+    sign = pct > 0 ? "+" : "";
   return (
-    <span className={`${down ? "text-red-600" : up ? "text-green-600" : "text-gray-500"} font-medium ml-2`}>
-      {down ? "▼" : up ? "▲" : "■"} {sign}{F(pct, 2)}%
+    <span
+      className={`${
+        down ? "text-red-600" : up ? "text-green-600" : "text-gray-500"
+      } font-medium ml-2`}
+    >
+      {down ? "▼" : up ? "▲" : "■"} {sign}
+      {F(pct, 2)}%
     </span>
   );
 }
 
-/* ---------- Input-Feld ---------- */
+/* ---------- NumericField (ORIGINAL, UNVERÄNDERT) ---------- */
 function NumericField({
+  label,
   value,
   onChange,
+  format = "2dec",
+  step = 1,
+  min = 0,
   readOnly = false,
-  dataCol,   // number: 2,3,4
+  suffix,
+  dataScenario,
 }) {
-  const inputRef = useRef(null);
-  const [editing, setEditing] = useState(false);
-
+  const [focus, setFocus] = useState(false);
   const num = P(value);
-  const display = editing ? value : F(num, 2);
+  const show = focus
+    ? value
+    : format === "int"
+    ? F(num, 0)
+    : format === "1dec"
+    ? F(num, 1)
+    : F(num, 2);
 
   return (
-    <input
-      ref={inputRef}
-      type="text"
-      inputMode="decimal"
-      value={display}
-      readOnly={readOnly}
-      data-col={dataCol}
-      onFocus={() => {
-        setEditing(true);
-        requestAnimationFrame(() => {
-          inputRef.current?.select(); // ✅ select all on focus
-        });
-      }}
-      onBlur={(e) => {
-        setEditing(false);
-        const n = clamp(P(e.target.value));
-        onChange(String(n));
-      }}
-      onChange={(e) => {
-        onChange(e.target.value.replace(/[^\d.,-]/g, ""));
-      }}
-      onKeyDown={(e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-
-    const currentRow = e.target.closest("[data-row]");
-    const nextRow = currentRow?.nextElementSibling;
-
-    const next = nextRow?.querySelector(
-      `input[data-col="${dataCol}"]`
-    );
-
-    next?.focus();
-  }
-}}
-      className={`block w-full border rounded-md p-2 text-right tabular-nums ${
-        readOnly ? "bg-gray-100 text-gray-600" : ""
-      }`}
-    />
+    <label className="block">
+      {label && <span className="text-gray-700">{label}</span>}
+      <div className="relative">
+        <input
+          type={focus ? "number" : "text"}
+          inputMode={focus ? "decimal" : "text"}
+          value={show}
+          min={min}
+          step={step}
+          readOnly={readOnly && !focus}
+          data-scenario={dataScenario}
+          onFocus={() => setFocus(true)}
+          onBlur={(e) => {
+            setFocus(false);
+            const n = clamp(P(e.target.value), min);
+            onChange(String(n));
+          }}
+          onChange={(e) =>
+            onChange(e.target.value.replace(/[^\d.,-]/g, ""))
+          }
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === "ArrowDown") {
+              e.preventDefault();
+              const inputs = Array.from(
+                document.querySelectorAll("input[data-scenario]")
+              );
+              const idx = inputs.indexOf(e.target);
+              inputs[idx + 1]?.focus();
+            }
+          }}
+          className={`mt-1 block w-full border rounded-md p-2 pr-16 text-right tabular-nums ${
+            readOnly ? "bg-gray-100 text-gray-600" : ""
+          }`}
+        />
+        {suffix && (
+          <span className="absolute inset-y-0 right-3 top-1/2 -translate-y-1/2 text-gray-500">
+            {suffix}
+          </span>
+        )}
+      </div>
+    </label>
   );
 }
+
 
 function ScenarioCell({
   value,
