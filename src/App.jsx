@@ -120,6 +120,39 @@ function NumericField({
   );
 }
 
+function ScenarioCell({
+  value,
+  onChange,
+  bold = false,
+  readOnly = false,
+  dataCol,
+}) {
+  const ref = useRef(null);
+
+  return (
+    <input
+      ref={ref}
+      type="text"
+      inputMode="decimal"
+      value={F(P(value), 2)}
+      readOnly={readOnly}
+      data-col={dataCol}
+      onFocus={() => {
+        requestAnimationFrame(() => ref.current?.select());
+      }}
+      onChange={(e) =>
+        onChange(e.target.value.replace(/[^\d.,-]/g, ""))
+      }
+      className={`
+        w-full border rounded-md p-2
+        text-right tabular-nums
+        ${readOnly ? "bg-gray-100 text-gray-800" : ""}
+        ${bold ? "font-bold" : ""}
+      `}
+    />
+  );
+}
+
 
 /* ---------- Chart Labels ---------- */
 const PercentLabel = ({ x, y, width, value }) => {
@@ -602,11 +635,13 @@ export default function App() {
       </div>
 
       {/* Scenario 1 (locked) */}
-<div className="p-2 text-right tabular-nums bg-gray-100 flex items-center justify-end">
-        <span className={key === "rent" ? "font-bold" : ""}>
-  {F(P(f[key]), 2)}
-</span>
-      </div>
+<div className="p-1">
+  <ScenarioCell
+    value={f[key]}
+    readOnly
+    bold={key === "rent"}
+  />
+</div>
 
       {/* Scenarios 2–4 */}
       {scenarios.map((sc, idx) => (
