@@ -666,15 +666,16 @@ return (
       <button onClick={exportProjectHTML} className="px-3 py-1.5 rounded border bg-gray-50 hover:bg-gray-100 text-sm">Export Project HTML</button>
     </div>
 
-         </div>
+                 </div>
       </div>
     </div>
-
-    <div className="mt-6 border rounded-lg overflow-hidden">
-      {/* Scenario table will be inserted here */}
-    </div>
-
   </div>
+
+  <div className="mt-6 border rounded-lg overflow-hidden">
+    {/* Scenario table will be inserted here */}
+  </div>
+
+</div>
 </div>
 );
 }
