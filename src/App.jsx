@@ -447,6 +447,7 @@ const calcScenarioNER = (vals) => {
 
   /* Export */
   const pageRef = useRef(null);
+  const mainContentRef = useRef(null);
   const resultsContentRef = useRef(null);
   const exportNode = async (node, filename) => {
     if (!node) return;
