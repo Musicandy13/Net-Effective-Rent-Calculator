@@ -61,17 +61,15 @@ function Money({ value }) {
 }
 function Delta({ base, val }) {
   const pct = base > 0 ? ((val - base) / base) * 100 : 0;
-  const up = pct > 0,
-    down = pct < 0,
-    sign = pct > 0 ? "+" : "";
+  const sign = pct > 0 ? "+" : "";
+  const cls =
+    pct < 0 ? "text-red-600" :
+    pct > 0 ? "text-green-600" :
+    "text-gray-500";
+
   return (
-    <span
-      className={`${
-        down ? "text-red-600" : up ? "text-green-600" : "text-gray-500"
-      } font-medium ml-2`}
-    >
-      {down ? "▼" : up ? "▲" : "■"} {sign}
-      {F(pct, 2)}%
+    <span className={`${cls} font-medium ml-2`}>
+      {sign}{F(pct, 2)}%
     </span>
   );
 }
