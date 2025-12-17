@@ -598,17 +598,16 @@ export default function App() {
       </div>
 
       {/* Scenarios 2–4 */}
-      {scenarios.map(sc => (
-        <div key={sc.id} className="p-1">
-          <NumericField
-            value={resolveScenario(sc, key)}
-            onChange={(v) => setScenarioVal(sc.id, key, v)}
-            suffix={suffix}
-          />
-        </div>
-      ))}
-    </div>
-  ))}
+{scenarios.map((sc, idx) => (
+  <div key={sc.id} className="p-1">
+    <NumericField
+      value={resolveScenario(sc, key)}
+      onChange={(v) => setScenarioVal(sc.id, key, v)}
+      dataCol={idx + 2}   // Scenario 2 → 2, Scenario 3 → 3, Scenario 4 → 4
+    />
+  </div>
+))}
+
 
   {/* Final NER row */}
   <div className="grid grid-cols-5 border-t bg-green-50 font-bold">
