@@ -223,6 +223,47 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [viewMode, setViewMode] = useState("bars");
 
+  export default function App() {
+  const [f, setF] = useState({
+    tenant: "",
+    nla: "1000",
+    addon: "5.00",
+    rent: "15.00",
+    duration: "60",
+    rf: "5.0",
+    agent: "2.0",
+    fitMode: "perNLA",
+    fitPerNLA: "300.00",
+    fitPerGLA: "",
+    fitTot: "300000.00",
+    unforeseen: "0",
+  });
+  const S = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
+
+  /* ================= Scenario Overrides (2–4) ================= */
+  const [scenarios, setScenarios] = useState([
+    { id: 2, overrides: {} },
+    { id: 3, overrides: {} },
+    { id: 4, overrides: {} },
+  ]);
+
+  const setScenarioVal = (id, key, value) => {
+    setScenarios(s =>
+      s.map(sc =>
+        sc.id === id
+          ? { ...sc, overrides: { ...sc.overrides, [key]: value } }
+          : sc
+      )
+    );
+  };
+
+  const resolveScenario = (sc, key) =>
+    sc?.overrides?.[key] ?? f[key];
+
+  /* ---------- existing state ---------- */
+  const [isExporting, setIsExporting] = useState(false);
+  const [viewMode, setViewMode] = useState("bars");
+
   /* ✅ Fix: Inputdaten beim Laden aus ?data=... übernehmen */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -286,6 +327,31 @@ export default function App() {
   const ner2 = (gross - totalFit) / denom;
   const ner3 = (gross - totalFit - agentFees) / denom;
   const ner4 = (gross - totalFit - agentFees - unforeseen) / denom;
+
+    /* ================= Scenario Final NER ================= */
+const calcScenarioFinalNER = (vals) => {
+  const rentS = clamp(P(vals.rent));
+  const durationS = Math.max(0, Math.floor(P(vals.duration)));
+  const rfS = clamp(P(vals.rf));
+  const agentS = clamp(P(vals.agent));
+  const unforeseenS = clamp(P(vals.unforeseen));
+
+  const monthsS = Math.max(0, durationS - rfS);
+  const grossS = rentS * gla * monthsS;
+
+  const fitS =
+    f.fitMode === "perNLA"
+      ? clamp(P(vals.fitPerNLA)) * nla
+      : f.fitMode === "perGLA"
+      ? clamp(P(vals.fitPerGLA)) * gla
+      : clamp(P(vals.fitTot));
+
+  const agentFeesS = agentS * rentS * gla;
+  const denomS = Math.max(1e-9, durationS * gla);
+
+  return (grossS - fits - agentFeesS - unforeseens) / denomS;
+};
+
 
   const totalHeadline = rent * gla * duration;
   const totalRentFrees = rent * gla * rf;
@@ -504,6 +570,68 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
+              {/* ================= Scenario Comparison ================= */}
+<div className="mt-6 border rounded-lg overflow-hidden">
+  {/* Header */}
+  <div className="grid grid-cols-5 bg-blue-700 text-white font-bold text-center">
+    <div />
+    <div className="bg-blue-900 p-2">Scenario 1</div>
+    <div className="p-2">Scenario 2</div>
+    <div className="p-2">Scenario 3</div>
+    <div className="p-2">Scenario 4</div>
+  </div>
+
+  {[
+    ["Headline Rent", "rent", "€/sqm"],
+    ["Lease Term", "duration", "months"],
+    ["RF-Months", "rf", "months"],
+    ["Fit-Outs / sqm", "fitPerNLA", "€/sqm"],
+    ["Agent Fees", "agent", "months"],
+  ].map(([label, key, suffix]) => (
+    <div key={key} className="grid grid-cols-5 border-t text-sm">
+      {/* Row label */}
+      <div className="p-2 font-medium bg-gray-50">{label}</div>
+
+      {/* Scenario 1 (locked baseline) */}
+      <div className="p-2 bg-gray-100 text-center">
+        {F(P(f[key]), 2)}
+      </div>
+
+      {/* Scenarios 2–4 */}
+      {scenarios.map(sc => (
+        <div key={sc.id} className="p-1">
+          <NumericField
+            value={resolveScenario(sc, key)}
+            onChange={(v) => setScenarioVal(sc.id, key, v)}
+            suffix={suffix}
+          />
+        </div>
+      ))}
+    </div>
+  ))}
+
+  {/* Final NER row */}
+  <div className="grid grid-cols-5 border-t bg-green-50 font-bold">
+    <div className="p-2 bg-green-600 text-white">NER</div>
+
+    {/* Scenario 1 */}
+    <div className="p-2 text-center">
+      {F(ner4, 2)} €/sqm
+    </div>
+
+    {/* Scenarios 2–4 */}
+    {scenarios.map(sc => {
+      const nerS = calcScenarioFinalNER({ ...f, ...sc.overrides });
+      return (
+        <div key={sc.id} className="p-2 text-center">
+          {F(nerS, 2)} €/sqm
+        </div>
+      );
+    })}
+  </div>
+</div>
+
 
               {/* Export buttons */}
               <div className="flex gap-2 justify-end mt-4">
