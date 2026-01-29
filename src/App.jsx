@@ -12,6 +12,11 @@ import {
 } from "recharts";
 import { toPng } from "html-to-image";
 
+const roundExcel = (n, d = 2) => {
+  const f = Math.pow(10, d);
+  return Math.round((Number.isFinite(n) ? n : 0) * f) / f;
+};
+
 /* ---- Steuerung für Legendenposition ---- */
 const BASE_H = 20;
 const BASE_B = 10;
@@ -282,10 +287,11 @@ export default function App() {
   const agentFees = agent * rent * gla;
   const denom = Math.max(1e-9, duration * gla);
 
-  const ner1 = gross / denom;
-  const ner2 = (gross - totalFit) / denom;
-  const ner3 = (gross - totalFit - agentFees) / denom;
-  const ner4 = (gross - totalFit - agentFees - unforeseen) / denom;
+  const ner1 = roundExcel(gross / denom, 2);
+  const ner2 = roundExcel((gross - totalFit) / denom, 2);
+  const ner3 = roundExcel((gross - totalFit - agentFees) / denom, 2);
+  const ner4 = roundExcel((gross - totalFit - agentFees - unforeseen) / denom, 2);
+
 
   const totalHeadline = rent * gla * duration;
   const totalRentFrees = rent * gla * rf;
