@@ -462,9 +462,9 @@ export default function App() {
                 </div>
 
                 <p className="text-sm font-semibold text-red-500 mb-1">Total Fit Out Costs: {FCUR(totalFit)}</p>
-                <p>1️⃣ NER incl. Rent Frees: <b>{F(ner1, 10)} €/sqm</b><Delta base={rent} val={ner1} /></p>
-                <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 10)} €/sqm</b><Delta base={rent} val={ner2} /></p>
-                <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 10)} €/sqm</b><Delta base={rent} val={ner3} /></p>
+                <p>1️⃣ NER incl. Rent Frees: <b>{F(ner1, 2)} €/sqm</b><Delta base={rent} val={ner1} /></p>
+                <p>2️⃣ incl. Rent Frees & Fit-Outs: <b>{F(ner2, 2)} €/sqm</b><Delta base={rent} val={ner2} /></p>
+                <p>3️⃣ incl. Rent Frees, Fit-Outs & Agent Fees: <b>{F(ner3, 2)} €/sqm</b><Delta base={rent} val={ner3} /></p>
 
                 {/* Charts */}
                 <div className="mt-2 grid grid-cols-3 gap-6">
